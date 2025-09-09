@@ -34,12 +34,11 @@ export default function TouristSafetyDashboard() {
 
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "map", label: "Real-Time Map", icon: MapPin },
-    { id: "clusters", label: "Tourist Clusters & Heatmaps", icon: Users },
+    { id: "clusters", label: "Tourist Clusters", icon: Users },
     { id: "high-risk", label: "High-Risk Zones", icon: Shield },
     { id: "alerts", label: "Alerts & Notifications", icon: AlertTriangle },
-    { id: "records", label: "Digital Tourist ID Records", icon: FileText },
-    { id: "missing", label: "Missing Person / E-FIR Cases", icon: Search },
+    { id: "records", label: "Digital ID Records", icon: FileText },
+    { id: "missing", label: "E-FIR Cases", icon: Search },
     { id: "reports", label: "Reports & Analytics", icon: BarChart3 },
   ]
 

@@ -1,0 +1,103 @@
+{
+  "zones": [
+    {
+      "id": "HRZ001",
+      "name": "hii",
+      "description": "ii",
+      "coordinates": [
+        {
+          "lat": 13.102763878659587,
+          "lng": 80.18418266601469
+        },
+        {
+          "lat": 13.087883325440387,
+          "lng": 80.24151756962829
+        },
+        {
+          "lat": 13.061463950182471,
+          "lng": 80.2222914954105
+        }
+      ],
+      "severity": "high",
+      "createdAt": "2025-09-09T12:00:51.692Z",
+      "createdBy": "Current Officer",
+      "isActive": true
+    },
+    {
+      "id": "HRZ002",
+      "name": "lol",
+      "description": "dsf",
+      "coordinates": [
+        {
+          "lat": 13.120652791439085,
+          "lng": 80.24263336487127
+        },
+        {
+          "lat": 13.103265454683552,
+          "lng": 80.23490860290792
+        },
+        {
+          "lat": 13.10309826278808,
+          "lng": 80.28434707947036
+        }
+      ],
+      "severity": "high",
+      "createdAt": "2025-09-09T12:16:42.764Z",
+      "createdBy": "Current Officer",
+      "isActive": true
+    },
+    {
+      "id": "HRZ003",
+      "name": "fgdfg",
+      "description": "dfgdf",
+      "coordinates": [
+        {
+          "lat": 13.256877257721555,
+          "lng": 80.16745575891457
+        },
+        {
+          "lat": 13.278127749512322,
+          "lng": 80.23770183086788
+        },
+        {
+          "lat": 13.16908384167482,
+          "lng": 80.24814381453604
+        },
+        {
+          "lat": 13.20420499746534,
+          "lng": 80.17694847134044
+        }
+      ],
+      "severity": "critical",
+      "createdAt": "2025-09-09T12:17:22.110Z",
+      "createdBy": "Current Officer",
+      "isActive": true
+    }
+  ],
+  "logs": [
+    {
+      "id": "LOG003",
+      "action": "created",
+      "zoneName": "fgdfg",
+      "timestamp": "2025-09-09T12:17:22.110Z",
+      "officer": "Current Officer",
+      "details": "New critical severity zone created: dfgdf"
+    },
+    {
+      "id": "LOG002",
+      "action": "created",
+      "zoneName": "lol",
+      "timestamp": "2025-09-09T12:16:42.765Z",
+      "officer": "Current Officer",
+      "details": "New high severity zone created: dsf"
+    },
+    {
+      "id": "LOG001",
+      "action": "created",
+      "zoneName": "hii",
+      "timestamp": "2025-09-09T12:00:51.692Z",
+      "officer": "Current Officer",
+      "details": "New high severity zone created: ii"
+    }
+  ]
+}

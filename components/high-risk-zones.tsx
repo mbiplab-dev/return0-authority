@@ -1,92 +1,183 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { AlertTriangle, Trash2, Edit, Clock, Shield, Square, MousePointer, Save, X } from "lucide-react"
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertTriangle,
+  Trash2,
+  Edit,
+  Clock,
+  Shield,
+  Square,
+  MousePointer,
+  Save,
+  X,
+} from "lucide-react";
 
 interface HighRiskZone {
-  id: string
-  name: string
-  description: string
-  coordinates: { lat: number; lng: number }[]
-  severity: "low" | "medium" | "high" | "critical"
-  createdAt: string
-  createdBy: string
-  isActive: boolean
+  id: string;
+  name: string;
+  description: string;
+  coordinates: { lat: number; lng: number }[];
+  severity: "low" | "medium" | "high" | "critical";
+  createdAt: string;
+  createdBy: string;
+  isActive: boolean;
 }
 
 interface ZoneLog {
-  id: string
-  action: "created" | "deleted" | "modified"
-  zoneName: string
-  timestamp: string
-  officer: string
-  details: string
+  id: string;
+  action: "created" | "deleted" | "modified";
+  zoneName: string;
+  timestamp: string;
+  officer: string;
+  details: string;
 }
 
-type DrawingMode = "none" | "polygon" | "editing"
+interface ZonesData {
+  zones: HighRiskZone[];
+  logs: ZoneLog[];
+}
+
+type DrawingMode = "none" | "polygon" | "editing";
 
 export function HighRiskZones() {
-  const mapContainer = useRef<HTMLDivElement>(null)
-  const map = useRef<any>(null)
-  const mapboxgl = useRef<any>(null)
-  const drawingMarkers = useRef<any[]>([])
-  const currentPolygonSource = useRef<any>(null)
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<any>(null);
+  const mapboxgl = useRef<any>(null);
+  const drawingMarkers = useRef<any[]>([]);
 
-  const [mapLoaded, setMapLoaded] = useState(false)
-  const [drawingMode, setDrawingMode] = useState<DrawingMode>("none")
-  const [drawingCoordinates, setDrawingCoordinates] = useState<{ lat: number; lng: number }[]>([])
-  const [selectedZone, setSelectedZone] = useState<HighRiskZone | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [newZoneName, setNewZoneName] = useState("")
-  const [newZoneDescription, setNewZoneDescription] = useState("")
-  const [newZoneSeverity, setNewZoneSeverity] = useState<"low" | "medium" | "high" | "critical">("medium")
-  const [highRiskZones, setHighRiskZones] = useState<HighRiskZone[]>([])
-  const [zoneLog, setZoneLog] = useState<ZoneLog[]>([])
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [drawingMode, setDrawingMode] = useState<DrawingMode>("none");
+  const [drawingCoordinates, setDrawingCoordinates] = useState<
+    { lat: number; lng: number }[]
+  >([]);
+  const [selectedZone, setSelectedZone] = useState<HighRiskZone | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newZoneName, setNewZoneName] = useState("");
+  const [newZoneDescription, setNewZoneDescription] = useState("");
+  const [newZoneSeverity, setNewZoneSeverity] = useState<
+    "low" | "medium" | "high" | "critical"
+  >("medium");
+  const [highRiskZones, setHighRiskZones] = useState<HighRiskZone[]>([]);
+  const [zoneLog, setZoneLog] = useState<ZoneLog[]>([]);
+
+  // Load zones data from API
+  const loadZonesData = async () => {
+    try {
+      console.log("[v0] Loading zones data from API");
+
+      const response = await fetch("/api/zones", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const zonesData: ZonesData = await response.json();
+        setHighRiskZones(zonesData.zones || []);
+        setZoneLog(zonesData.logs || []);
+        console.log("[v0] Loaded zones:", zonesData.zones?.length || 0);
+      } else if (response.status === 404) {
+        // File doesn't exist yet, start with empty data
+        console.log("[v0] No existing zones file found, starting fresh");
+        setHighRiskZones([]);
+        setZoneLog([]);
+      } else {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      setDataLoaded(true);
+    } catch (error) {
+      console.log("[v0] Error loading zones data:", error);
+      // Start with empty data if there's an error
+      setHighRiskZones([]);
+      setZoneLog([]);
+      setDataLoaded(true);
+    }
+  };
+
+  // Save zones data to file
+  const saveZonesData = async (zones: HighRiskZone[], logs: ZoneLog[]) => {
+    try {
+      const zonesData: ZonesData = { zones, logs };
+
+      console.log("[v0] Saving zones data:", zonesData);
+
+      const response = await fetch("/api/zones", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(zonesData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save zones: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("[v0] Zones data saved:", result);
+    } catch (error) {
+      console.error("[v0] Error saving zones data:", error);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    loadZonesData();
+  }, []);
 
   const handleMapClick = useCallback(
     (e: any) => {
-      console.log("[v0] Map clicked, drawing mode:", drawingMode)
+      console.log("Map clicked, drawing mode:", drawingMode);
 
       if (drawingMode !== "polygon") {
-        console.log("[v0] Not in polygon drawing mode, ignoring click")
-        return
+        console.log("Not in polygon drawing mode, ignoring click");
+        return;
       }
 
-      e.preventDefault()
-      e.originalEvent?.stopPropagation()
+      e.preventDefault();
+      e.originalEvent?.stopPropagation();
 
-      const { lng, lat } = e.lngLat
-      const newCoord = { lat, lng }
+      const { lng, lat } = e.lngLat;
+      const newCoord = { lat, lng };
 
-      console.log("[v0] Adding drawing coordinate:", newCoord)
+      console.log("[v0] Adding drawing coordinate:", newCoord);
 
       setDrawingCoordinates((prev) => {
-        const updated = [...prev, newCoord]
-        console.log("[v0] Updated drawing coordinates:", updated)
+        const updated = [...prev, newCoord];
+        console.log("[v0] Updated drawing coordinates:", updated);
 
         // Add visual marker
-        addDrawingMarker(lng, lat, updated.length)
+        addDrawingMarker(lng, lat, updated.length);
 
         // Update live polygon preview
-        updatePolygonPreview(updated)
+        updatePolygonPreview(updated);
 
-        return updated
-      })
+        return updated;
+      });
     },
-    [drawingMode],
-  )
+    [drawingMode]
+  );
 
   const addDrawingMarker = (lng: number, lat: number, index: number) => {
-    if (!map.current || !mapboxgl.current) return
+    if (!map.current || !mapboxgl.current) return;
 
-    const el = document.createElement("div")
+    const el = document.createElement("div");
     el.style.cssText = `
       width: 16px;
       height: 16px;
@@ -96,9 +187,9 @@ export function HighRiskZones() {
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       cursor: pointer;
       position: relative;
-    `
+    `;
 
-    const numberEl = document.createElement("div")
+    const numberEl = document.createElement("div");
     numberEl.style.cssText = `
       position: absolute;
       top: -30px;
@@ -112,31 +203,30 @@ export function HighRiskZones() {
       font-weight: bold;
       white-space: nowrap;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    `
-    numberEl.textContent = `Point ${index}`
-    el.appendChild(numberEl)
+    `;
+    numberEl.textContent = `Point ${index}`;
+    el.appendChild(numberEl);
 
-    const marker = new mapboxgl.current.default.Marker(el).setLngLat([lng, lat]).addTo(map.current)
+    const marker = new mapboxgl.current.default.Marker(el)
+      .setLngLat([lng, lat])
+      .addTo(map.current);
 
-    drawingMarkers.current.push(marker)
-  }
+    drawingMarkers.current.push(marker);
+  };
 
-  const updatePolygonPreview = (coordinates: { lat: number; lng: number }[]) => {
-    if (!map.current || coordinates.length < 2) return
+  const updatePolygonPreview = (
+    coordinates: { lat: number; lng: number }[]
+  ) => {
+    if (!map.current || coordinates.length < 2) return;
 
-    const sourceId = "drawing-preview"
+    // Clear existing preview layers and sources
+    clearDrawingPreview();
 
-    // Remove existing preview
-    if (map.current.getSource(sourceId)) {
-      map.current.removeLayer("drawing-preview-fill")
-      map.current.removeLayer("drawing-preview-line")
-      map.current.removeSource(sourceId)
-    }
-
-    const coords = coordinates.map((coord) => [coord.lng, coord.lat])
+    const coords = coordinates.map((coord) => [coord.lng, coord.lat]);
 
     // Add line preview
-    map.current.addSource(sourceId, {
+    const lineSourceId = "drawing-preview-line";
+    map.current.addSource(lineSourceId, {
       type: "geojson",
       data: {
         type: "Feature",
@@ -145,24 +235,25 @@ export function HighRiskZones() {
           coordinates: coords,
         },
       },
-    })
+    });
 
     map.current.addLayer({
       id: "drawing-preview-line",
       type: "line",
-      source: sourceId,
+      source: lineSourceId,
       paint: {
         "line-color": "#3b82f6",
         "line-width": 3,
         "line-dasharray": [5, 5],
       },
-    })
+    });
 
     // If we have 3+ points, show polygon preview
     if (coordinates.length >= 3) {
-      const polygonCoords = [...coords, coords[0]] // Close the polygon
+      const polygonCoords = [...coords, coords[0]]; // Close the polygon
+      const polygonSourceId = "drawing-preview-polygon";
 
-      map.current.addSource(`${sourceId}-polygon`, {
+      map.current.addSource(polygonSourceId, {
         type: "geojson",
         data: {
           type: "Feature",
@@ -171,145 +262,172 @@ export function HighRiskZones() {
             coordinates: [polygonCoords],
           },
         },
-      })
+      });
 
       map.current.addLayer({
         id: "drawing-preview-fill",
         type: "fill",
-        source: `${sourceId}-polygon`,
+        source: polygonSourceId,
         paint: {
           "fill-color": "#3b82f6",
           "fill-opacity": 0.2,
         },
-      })
+      });
     }
-  }
+  };
 
   useEffect(() => {
-    if (map.current || !mapContainer.current) return
+    if (map.current || !mapContainer.current) return;
 
     const loadMapbox = async () => {
       try {
-        mapboxgl.current = await import("mapbox-gl")
+        mapboxgl.current = await import("mapbox-gl");
 
         if (!document.querySelector('link[href*="mapbox-gl"]')) {
-          const link = document.createElement("link")
-          link.href = "https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css"
-          link.rel = "stylesheet"
-          document.head.appendChild(link)
+          const link = document.createElement("link");
+          link.href =
+            "https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css";
+          link.rel = "stylesheet";
+          document.head.appendChild(link);
         }
 
         mapboxgl.current.default.accessToken =
           process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ||
-          "pk.eyJ1IjoidjBhcHAiLCJhIjoiY20zZzFqZGNzMGNhZzJxcHpxbGNxZGNkYSJ9.KOFNZqmqmzk8OQh_5QG8Ow"
+          "pk.eyJ1IjoidjBhcHAiLCJhIjoiY20zZzFqZGNzMGNhZzJxcHpxbGNxZGNkYSJ9.KOFNZqmqmzk8OQh_5QG8Ow";
 
         map.current = new mapboxgl.current.default.Map({
           container: mapContainer.current!,
           style: "mapbox://styles/mapbox/streets-v12",
           center: [80.2707, 13.0827],
           zoom: 12,
-        })
+        });
 
         map.current.on("load", () => {
-          console.log("[v0] Map loaded successfully")
-          setMapLoaded(true)
-          addHighRiskZones()
-        })
+          console.log("[v0] Map loaded successfully");
+          setMapLoaded(true);
+        });
 
-        map.current.on("click", handleMapClick)
+        map.current.on("click", handleMapClick);
       } catch (error) {
-        console.error("[v0] Failed to load Mapbox:", error)
-        setMapLoaded(false)
+        console.error("[v0] Failed to load Mapbox:", error);
+        setMapLoaded(false);
       }
-    }
+    };
 
-    loadMapbox()
+    loadMapbox();
 
     return () => {
       if (map.current) {
-        map.current.remove()
-        map.current = null
+        map.current.remove();
+        map.current = null;
       }
+    };
+  }, [handleMapClick]);
+
+  // Add zones to map when both map and data are loaded
+  useEffect(() => {
+    if (mapLoaded && dataLoaded && highRiskZones.length > 0) {
+      console.log("[v0] Adding zones to map, count:", highRiskZones.length);
+      addHighRiskZones();
     }
-  }, [handleMapClick])
+  }, [mapLoaded, dataLoaded, highRiskZones]);
 
   const startPolygonDrawing = () => {
-    console.log("[v0] Starting polygon drawing mode")
-    setDrawingMode("polygon")
-    setDrawingCoordinates([])
-    clearDrawingPreview()
-    clearDrawingMarkers()
+    console.log("[v0] Starting polygon drawing mode");
+    setDrawingMode("polygon");
+    setDrawingCoordinates([]);
+    clearDrawingPreview();
+    clearDrawingMarkers();
 
     if (map.current) {
-      map.current.getCanvas().style.cursor = "crosshair"
+      map.current.getCanvas().style.cursor = "crosshair";
     }
-  }
+  };
 
   const finishPolygon = () => {
     if (drawingCoordinates.length < 3) {
-      alert("Please mark at least 3 points to create a polygon")
-      return
+      alert("Please mark at least 3 points to create a polygon");
+      return;
     }
 
-    console.log("[v0] Finishing polygon with coordinates:", drawingCoordinates)
-    setDrawingMode("none")
-    setIsDialogOpen(true)
+    console.log("[v0] Finishing polygon with coordinates:", drawingCoordinates);
+    setDrawingMode("none");
+    setIsDialogOpen(true);
 
     if (map.current) {
-      map.current.getCanvas().style.cursor = "default"
+      map.current.getCanvas().style.cursor = "default";
     }
-  }
+  };
 
   const cancelDrawing = () => {
-    console.log("[v0] Cancelling drawing")
-    setDrawingMode("none")
-    setDrawingCoordinates([])
-    clearDrawingMarkers()
-    clearDrawingPreview()
+    console.log("[v0] Cancelling drawing");
+    setDrawingMode("none");
+    setDrawingCoordinates([]);
+    clearDrawingMarkers();
+    clearDrawingPreview();
 
     if (map.current) {
-      map.current.getCanvas().style.cursor = "default"
+      map.current.getCanvas().style.cursor = "default";
     }
-  }
+  };
 
   const clearDrawingMarkers = () => {
-    drawingMarkers.current.forEach((marker) => marker.remove())
-    drawingMarkers.current = []
-  }
+    drawingMarkers.current.forEach((marker) => {
+      try {
+        marker.remove();
+      } catch (error) {
+        console.warn("Error removing marker:", error);
+      }
+    });
+    drawingMarkers.current = [];
+  };
 
   const clearDrawingPreview = () => {
-    if (!map.current) return
+    if (!map.current) return;
 
-    const sources = ["drawing-preview", "drawing-preview-polygon"]
-    const layers = ["drawing-preview-line", "drawing-preview-fill"]
+    const layersToRemove = ["drawing-preview-line", "drawing-preview-fill"];
+    const sourcesToRemove = ["drawing-preview-line", "drawing-preview-polygon"];
 
-    layers.forEach((layerId) => {
-      if (map.current.getLayer(layerId)) {
-        map.current.removeLayer(layerId)
+    // Remove layers first
+    layersToRemove.forEach((layerId) => {
+      try {
+        if (map.current.getLayer(layerId)) {
+          map.current.removeLayer(layerId);
+        }
+      } catch (error) {
+        console.warn(`Error removing layer ${layerId}:`, error);
       }
-    })
+    });
 
-    sources.forEach((sourceId) => {
-      if (map.current.getSource(sourceId)) {
-        map.current.removeSource(sourceId)
+    // Then remove sources
+    sourcesToRemove.forEach((sourceId) => {
+      try {
+        if (map.current.getSource(sourceId)) {
+          map.current.removeSource(sourceId);
+        }
+      } catch (error) {
+        console.warn(`Error removing source ${sourceId}:`, error);
       }
-    })
-  }
+    });
+  };
 
   const addHighRiskZones = () => {
-    if (!map.current || !mapLoaded) return
+    if (!map.current || !mapLoaded) return;
 
-    console.log("[v0] Adding high-risk zones to map")
+    console.log("[v0] Adding high-risk zones to map");
 
     highRiskZones.forEach((zone) => {
-      if (!zone.isActive) return
+      if (!zone.isActive) return;
 
       if (map.current.getSource(`high-risk-zone-${zone.id}`)) {
-        return
+        return;
       }
 
-      const coordinates = zone.coordinates.map((coord) => [coord.lng, coord.lat])
-      coordinates.push(coordinates[0])
+      const coordinates = zone.coordinates.map((coord) => [
+        coord.lng,
+        coord.lat,
+      ]);
+      coordinates.push(coordinates[0]);
 
       map.current.addSource(`high-risk-zone-${zone.id}`, {
         type: "geojson",
@@ -325,10 +443,10 @@ export function HighRiskZones() {
             severity: zone.severity,
           },
         },
-      })
+      });
 
-      const fillColor = getSeverityColor(zone.severity)
-      const borderColor = getSeverityBorderColor(zone.severity)
+      const fillColor = getSeverityColor(zone.severity);
+      const borderColor = getSeverityBorderColor(zone.severity);
 
       map.current.addLayer({
         id: `high-risk-zone-${zone.id}`,
@@ -338,7 +456,7 @@ export function HighRiskZones() {
           "fill-color": fillColor,
           "fill-opacity": 0.4,
         },
-      })
+      });
 
       map.current.addLayer({
         id: `high-risk-zone-${zone.id}-border`,
@@ -349,11 +467,11 @@ export function HighRiskZones() {
           "line-width": 3,
           "line-dasharray": [2, 2],
         },
-      })
+      });
 
-      const center = getPolygonCenter(zone.coordinates)
-      const labelEl = document.createElement("div")
-      labelEl.className = "zone-label"
+      const center = getPolygonCenter(zone.coordinates);
+      const labelEl = document.createElement("div");
+      labelEl.className = "zone-label";
       labelEl.innerHTML = `
         <div style="
           background: ${borderColor};
@@ -367,22 +485,24 @@ export function HighRiskZones() {
         ">
           ${zone.name}
         </div>
-      `
+      `;
 
-      const marker = new mapboxgl.current.default.Marker(labelEl).setLngLat([center.lng, center.lat]).addTo(map.current)
+      const marker = new mapboxgl.current.default.Marker(labelEl)
+        .setLngLat([center.lng, center.lat])
+        .addTo(map.current);
 
       labelEl.addEventListener("click", () => {
-        setSelectedZone(zone)
-      })
+        setSelectedZone(zone);
+      });
 
       map.current.on("click", `high-risk-zone-${zone.id}`, () => {
-        setSelectedZone(zone)
-      })
-    })
-  }
+        setSelectedZone(zone);
+      });
+    });
+  };
 
-  const saveNewZone = () => {
-    if (!newZoneName.trim() || drawingCoordinates.length < 3) return
+  const saveNewZone = async () => {
+    if (!newZoneName.trim() || drawingCoordinates.length < 3) return;
 
     const newZone: HighRiskZone = {
       id: `HRZ${String(highRiskZones.length + 1).padStart(3, "0")}`,
@@ -393,11 +513,12 @@ export function HighRiskZones() {
       createdAt: new Date().toISOString(),
       createdBy: "Current Officer",
       isActive: true,
-    }
+    };
 
-    console.log("[v0] Saving new high-risk zone:", newZone)
+    console.log("[v0] Saving new high-risk zone:", newZone);
 
-    setHighRiskZones((prev) => [...prev, newZone])
+    const updatedZones = [...highRiskZones, newZone];
+    setHighRiskZones(updatedZones);
 
     const logEntry: ZoneLog = {
       id: `LOG${String(zoneLog.length + 1).padStart(3, "0")}`,
@@ -406,26 +527,35 @@ export function HighRiskZones() {
       timestamp: new Date().toISOString(),
       officer: "Current Officer",
       details: `New ${newZoneSeverity} severity zone created: ${newZoneDescription}`,
-    }
-    setZoneLog((prev) => [logEntry, ...prev])
+    };
+    const updatedLogs = [logEntry, ...zoneLog];
+    setZoneLog(updatedLogs);
 
-    setNewZoneName("")
-    setNewZoneDescription("")
-    setNewZoneSeverity("medium")
-    setDrawingCoordinates([])
-    setIsDialogOpen(false)
+    // Save to file
+    await saveZonesData(updatedZones, updatedLogs);
 
-    clearDrawingMarkers()
-    clearDrawingPreview()
-  }
+    // Reset form and drawing state
+    setNewZoneName("");
+    setNewZoneDescription("");
+    setNewZoneSeverity("medium");
+    setDrawingCoordinates([]);
+    setIsDialogOpen(false);
 
-  const deleteZone = (zoneId: string) => {
-    const zone = highRiskZones.find((z) => z.id === zoneId)
-    if (!zone) return
+    // Clear drawing elements
+    clearDrawingMarkers();
+    clearDrawingPreview();
+  };
 
-    console.log("[v0] Deleting high-risk zone:", zoneId)
+  const deleteZone = async (zoneId: string) => {
+    const zone = highRiskZones.find((z) => z.id === zoneId);
+    if (!zone) return;
 
-    setHighRiskZones((prev) => prev.map((z) => (z.id === zoneId ? { ...z, isActive: false } : z)))
+    console.log("[v0] Deleting high-risk zone:", zoneId);
+
+    const updatedZones = highRiskZones.map((z) =>
+      z.id === zoneId ? { ...z, isActive: false } : z
+    );
+    setHighRiskZones(updatedZones);
 
     const logEntry: ZoneLog = {
       id: `LOG${String(zoneLog.length + 1).padStart(3, "0")}`,
@@ -434,74 +564,114 @@ export function HighRiskZones() {
       timestamp: new Date().toISOString(),
       officer: "Current Officer",
       details: `High-risk zone deactivated`,
-    }
-    setZoneLog((prev) => [logEntry, ...prev])
+    };
+    const updatedLogs = [logEntry, ...zoneLog];
+    setZoneLog(updatedLogs);
+
+    // Save to file
+    await saveZonesData(updatedZones, updatedLogs);
 
     if (map.current) {
-      if (map.current.getLayer(`high-risk-zone-${zoneId}`)) {
-        map.current.removeLayer(`high-risk-zone-${zoneId}`)
-        map.current.removeLayer(`high-risk-zone-${zoneId}-border`)
-        map.current.removeSource(`high-risk-zone-${zoneId}`)
+      try {
+        if (map.current.getLayer(`high-risk-zone-${zoneId}`)) {
+          map.current.removeLayer(`high-risk-zone-${zoneId}`);
+        }
+        if (map.current.getLayer(`high-risk-zone-${zoneId}-border`)) {
+          map.current.removeLayer(`high-risk-zone-${zoneId}-border`);
+        }
+        if (map.current.getSource(`high-risk-zone-${zoneId}`)) {
+          map.current.removeSource(`high-risk-zone-${zoneId}`);
+        }
+      } catch (error) {
+        console.warn("Error removing zone from map:", error);
       }
     }
 
-    setSelectedZone(null)
-  }
+    setSelectedZone(null);
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "low":
-        return "#eab308"
+        return "#eab308";
       case "medium":
-        return "#f97316"
+        return "#f97316";
       case "high":
-        return "#ef4444"
+        return "#ef4444";
       case "critical":
-        return "#dc2626"
+        return "#dc2626";
       default:
-        return "#6b7280"
+        return "#6b7280";
     }
-  }
+  };
 
   const getSeverityBorderColor = (severity: string) => {
     switch (severity) {
       case "low":
-        return "#ca8a04"
+        return "#ca8a04";
       case "medium":
-        return "#ea580c"
+        return "#ea580c";
       case "high":
-        return "#dc2626"
+        return "#dc2626";
       case "critical":
-        return "#b91c1c"
+        return "#b91c1c";
       default:
-        return "#4b5563"
+        return "#4b5563";
     }
-  }
+  };
 
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {
       case "low":
-        return "secondary"
+        return "secondary";
       case "medium":
-        return "secondary"
+        return "secondary";
       case "high":
-        return "destructive"
+        return "destructive";
       case "critical":
-        return "destructive"
+        return "destructive";
       default:
-        return "outline"
+        return "outline";
     }
-  }
+  };
 
   const getPolygonCenter = (coordinates: { lat: number; lng: number }[]) => {
-    const lat = coordinates.reduce((sum, coord) => sum + coord.lat, 0) / coordinates.length
-    const lng = coordinates.reduce((sum, coord) => sum + coord.lng, 0) / coordinates.length
-    return { lat, lng }
-  }
+    const lat =
+      coordinates.reduce((sum, coord) => sum + coord.lat, 0) /
+      coordinates.length;
+    const lng =
+      coordinates.reduce((sum, coord) => sum + coord.lng, 0) /
+      coordinates.length;
+    return { lat, lng };
+  };
 
   const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString()
-  }
+    return new Date(timestamp).toLocaleString();
+  };
+
+  // Generate GeoJSON data for export
+  const geojsonData = {
+    type: "FeatureCollection",
+    features: highRiskZones
+      .filter((zone) => zone.isActive)
+      .map((zone) => ({
+        type: "Feature",
+        properties: {
+          id: zone.id,
+          name: zone.name,
+          description: zone.description,
+          severity: zone.severity,
+          createdAt: zone.createdAt,
+          createdBy: zone.createdBy,
+        },
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            zone.coordinates.map((coord) => [coord.lng, coord.lat]),
+          ],
+        },
+      })),
+  };
 
   return (
     <div className="space-y-6">
@@ -511,6 +681,11 @@ export function HighRiskZones() {
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5" />
             High-Risk Zone Editor
+            {!dataLoaded && (
+              <Badge variant="secondary" className="ml-2">
+                Loading data...
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -520,7 +695,15 @@ export function HighRiskZones() {
               <Button
                 size="sm"
                 variant={drawingMode === "none" ? "default" : "ghost"}
-                onClick={() => setDrawingMode("none")}
+                onClick={() => {
+                  setDrawingMode("none");
+                  clearDrawingMarkers();
+                  clearDrawingPreview();
+                  setDrawingCoordinates([]);
+                  if (map.current) {
+                    map.current.getCanvas().style.cursor = "default";
+                  }
+                }}
                 className="flex items-center gap-2"
               >
                 <MousePointer className="w-4 h-4" />
@@ -564,7 +747,27 @@ export function HighRiskZones() {
               </div>
             )}
 
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (geojsonData) {
+                    const dataStr = JSON.stringify(geojsonData, null, 2);
+                    const dataUri =
+                      "data:application/json;charset=utf-8," +
+                      encodeURIComponent(dataStr);
+                    const exportFileDefaultName = "high-risk-zones.geojson";
+                    const linkElement = document.createElement("a");
+                    linkElement.setAttribute("href", dataUri);
+                    linkElement.setAttribute("download", exportFileDefaultName);
+                    linkElement.click();
+                  }
+                }}
+                className="flex items-center gap-2"
+              >
+                Export GeoJSON
+              </Button>
               <Badge variant="secondary" className="flex items-center gap-1">
                 <Shield className="w-3 h-3" />
                 {highRiskZones.filter((z) => z.isActive).length} Active Zones
@@ -575,8 +778,8 @@ export function HighRiskZones() {
           {drawingMode === "polygon" && (
             <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Drawing Mode:</strong> Click on the map to add points to your polygon. You need at least 3
-                points to create a zone.
+                <strong>Drawing Mode:</strong> Click on the map to add points to
+                your polygon. You need at least 3 points to create a zone.
               </p>
             </div>
           )}
@@ -587,11 +790,13 @@ export function HighRiskZones() {
       <Card>
         <CardContent className="p-0">
           <div ref={mapContainer} className="h-[600px] w-full rounded-lg" />
-          {!mapLoaded && (
+          {(!mapLoaded || !dataLoaded) && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-lg">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                <p className="text-sm text-muted-foreground">Loading map...</p>
+                <p className="text-sm text-muted-foreground">
+                  {!mapLoaded ? "Loading map..." : "Loading zones data..."}
+                </p>
               </div>
             </div>
           )}
@@ -608,7 +813,11 @@ export function HighRiskZones() {
                   <AlertTriangle className="w-5 h-5" />
                   Zone Details
                 </span>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedZone(null)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedZone(null)}
+                >
                   ×
                 </Button>
               </CardTitle>
@@ -616,32 +825,47 @@ export function HighRiskZones() {
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-sm font-medium">Zone Name</Label>
-                <p className="text-sm text-muted-foreground">{selectedZone.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedZone.name}
+                </p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Severity Level</Label>
-                <Badge variant={getSeverityBadgeVariant(selectedZone.severity)} className="mt-1">
+                <Badge
+                  variant={getSeverityBadgeVariant(selectedZone.severity)}
+                  className="mt-1"
+                >
                   {selectedZone.severity.toUpperCase()}
                 </Badge>
               </div>
               <div>
                 <Label className="text-sm font-medium">Description</Label>
-                <p className="text-sm text-muted-foreground">{selectedZone.description}</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedZone.description}
+                </p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Created By</Label>
-                <p className="text-sm text-muted-foreground">{selectedZone.createdBy}</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedZone.createdBy}
+                </p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Created At</Label>
-                <p className="text-sm text-muted-foreground">{formatTimestamp(selectedZone.createdAt)}</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatTimestamp(selectedZone.createdAt)}
+                </p>
               </div>
               <div className="flex gap-2 pt-2">
                 <Button size="sm" variant="outline">
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Zone
                 </Button>
-                <Button size="sm" variant="destructive" onClick={() => deleteZone(selectedZone.id)}>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => deleteZone(selectedZone.id)}
+                >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete Zone
                 </Button>
@@ -662,41 +886,53 @@ export function HighRiskZones() {
             <div className="space-y-3 max-h-80 overflow-y-auto">
               {zoneLog.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No zone activities yet. Create your first zone to see logs here.
+                  No zone activities yet. Create your first zone to see logs
+                  here.
                 </p>
               ) : (
                 zoneLog.map((log) => (
-                  <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg border border-border">
+                  <div
+                    key={log.id}
+                    className="flex items-start gap-3 p-3 rounded-lg border border-border"
+                  >
                     <div
                       className={`w-2 h-2 rounded-full mt-2 ${
                         log.action === "created"
                           ? "bg-green-500"
                           : log.action === "deleted"
-                            ? "bg-red-500"
-                            : "bg-blue-500"
+                          ? "bg-red-500"
+                          : "bg-blue-500"
                       }`}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-card-foreground">
-                          {log.action.charAt(0).toUpperCase() + log.action.slice(1)}: {log.zoneName}
+                          {log.action.charAt(0).toUpperCase() +
+                            log.action.slice(1)}
+                          : {log.zoneName}
                         </p>
                         <Badge
                           variant={
                             log.action === "created"
                               ? "default"
                               : log.action === "deleted"
-                                ? "destructive"
-                                : "secondary"
+                              ? "destructive"
+                              : "secondary"
                           }
                           className="text-xs"
                         >
                           {log.action}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground">{log.details}</p>
-                      <p className="text-xs text-muted-foreground">By: {log.officer}</p>
-                      <p className="text-xs text-muted-foreground">{formatTimestamp(log.timestamp)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {log.details}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        By: {log.officer}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatTimestamp(log.timestamp)}
+                      </p>
                     </div>
                   </div>
                 ))
@@ -755,5 +991,5 @@ export function HighRiskZones() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
