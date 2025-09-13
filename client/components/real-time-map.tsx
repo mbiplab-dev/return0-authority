@@ -129,16 +129,13 @@ export function RealTimeMap() {
 
         // Set access token (you'll need to add this to your environment variables)
         mapboxgl.default.accessToken =
-          process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ||
-          "pk.eyJ1IjoidjBhcHAiLCJhIjoiY20zZzFqZGNzMGNhZzJxcHpxbGNxZGNkYSJ9.KOFNZqmqmzk8OQh_5QG8Ow"
+          process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
 
         map.current = new mapboxgl.default.Map({
           container: mapContainer.current!,
           style: "mapbox://styles/mapbox/streets-v12",
           center: [80.2707, 13.0827], // Chennai coordinates
-          zoom: 12,
-          pitch: 45,
-          bearing: -17.6,
+          zoom: 12
         })
 
         map.current.on("load", () => {
@@ -164,48 +161,6 @@ export function RealTimeMap() {
 
   const addTouristMarkers = () => {
     if (!map.current || !mapLoaded) return
-
-    touristLocations.forEach((location) => {
-      const el = document.createElement("div")
-      el.className = "tourist-marker"
-      el.style.cssText = `
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        cursor: pointer;
-        position: relative;
-        background-color: ${getStatusColor(location.status)};
-      `
-
-      // Add group size indicator
-      const sizeIndicator = document.createElement("div")
-      sizeIndicator.textContent = location.groupSize.toString()
-      sizeIndicator.style.cssText = `
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        background: #2563eb;
-        color: white;
-        border-radius: 50%;
-        width: 16px;
-        height: 16px;
-        font-size: 10px;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      `
-      el.appendChild(sizeIndicator)
-
-      const mapboxgl = require("mapbox-gl")
-      const marker = new mapboxgl.Marker(el).setLngLat([location.lng, location.lat]).addTo(map.current)
-
-      el.addEventListener("click", () => {
-        setSelectedLocation(location)
-      })
-    })
   }
 
   const addSafetyZones = () => {

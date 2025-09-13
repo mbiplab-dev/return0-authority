@@ -35,7 +35,7 @@ export default function TouristSafetyDashboard() {
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "clusters", label: "Tourist Clusters", icon: Users },
-    { id: "high-risk", label: "High-Risk Zones", icon: Shield },
+    { id: "high-risk", label: "Zone Management", icon: Shield },
     { id: "alerts", label: "Alerts & Notifications", icon: AlertTriangle },
     { id: "records", label: "Digital ID Records", icon: FileText },
     { id: "missing", label: "E-FIR Cases", icon: Search },
