@@ -294,19 +294,6 @@ export function RealTimeMap() {
     return () => clearInterval(interval)
   }, [])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "safe":
-        return "#22c55e"
-      case "warning":
-        return "#eab308"
-      case "danger":
-        return "#ef4444"
-      default:
-        return "#6b7280"
-    }
-  }
-
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "safe":

@@ -227,7 +227,7 @@ export default function TouristSafetyDashboard() {
               <Menu className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-card-foreground bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold text-card-foreground bg-gradient-to-r from-primary to-accent bg-clip-text">
                 Smart Tourist Safety Monitoring
               </h1>
               <p className="text-sm text-muted-foreground">

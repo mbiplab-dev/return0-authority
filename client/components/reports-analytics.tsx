@@ -370,9 +370,9 @@ export function ReportsAnalytics() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="incidents" fill="hsl(var(--primary))" name="Total Incidents" />
-                  <Bar dataKey="resolved" fill="hsl(var(--accent))" name="Resolved" />
-                  <Bar dataKey="pending" fill="hsl(var(--secondary))" name="Pending" />
+                  <Bar dataKey="incidents" fill="#f97316" name="Total Incidents" />
+                  <Bar dataKey="resolved" fill="#eab308" name="Resolved" />
+                  <Bar dataKey="pending" fill="#10b981" name="Pending" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -400,8 +400,8 @@ export function ReportsAnalytics() {
                   <Area
                     type="monotone"
                     dataKey="tourists"
-                    stroke="hsl(var(--primary))"
-                    fill="hsl(var(--primary) / 0.3)"
+                    stroke="#eab308"
+                    fill="#10b981"
                     name="Active Tourists"
                   />
                 </AreaChart>
