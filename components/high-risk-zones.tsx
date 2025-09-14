@@ -788,7 +788,7 @@ export function HighRiskZones() {
 
       {/* Interactive Map */}
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="px-4">
           <div ref={mapContainer} className="h-[600px] w-full rounded-lg" />
           {(!mapLoaded || !dataLoaded) && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-lg">

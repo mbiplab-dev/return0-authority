@@ -109,12 +109,6 @@ export function ReportsAnalytics() {
           locationHotspots: generateLocationHotspots(complaints),
           responseMetrics: [
             {
-              metric: "Average Response Time",
-              value: `${stats.summary.averageResponseTime.toFixed(1)} min`,
-              trend: "down",
-              change: "-12%"
-            },
-            {
               metric: "Resolution Rate", 
               value: `${stats.summary.resolutionRate.toFixed(1)}%`,
               trend: "up",

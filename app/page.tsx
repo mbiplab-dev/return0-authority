@@ -251,12 +251,6 @@ export default function TouristSafetyDashboard() {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            <Button variant="ghost" size="sm" className="relative hover-lift">
-              <Bell className="w-5 h-5" />
-              <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center bg-destructive text-destructive-foreground pulse-alert">
-                {dashboardStats?.alertsToday || 0}
-              </Badge>
-            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -265,10 +259,6 @@ export default function TouristSafetyDashboard() {
             >
               {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </Button>
-            <Avatar className="hover-lift">
-              <AvatarImage src="/police-officer.png" />
-              <AvatarFallback>PO</AvatarFallback>
-            </Avatar>
           </div>
         </header>
 
@@ -314,7 +304,7 @@ export default function TouristSafetyDashboard() {
                     return (
                       <Card key={index} className="hover-lift shadow-soft">
                         <CardHeader
-                          className={`flex flex-row items-center justify-between space-y-0 pb-2 ${stat.bgColor} rounded-t-lg`}
+                          className={`flex flex-row items-center justify-between space-y-0 py-2 ${stat.bgColor}`}
                         >
                           <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
                           <Icon className={`w-5 h-5 ${stat.color}`} />
@@ -351,10 +341,10 @@ export default function TouristSafetyDashboard() {
                       Live Tourist Safety Map
                     </CardTitle>
                     <CardDescription className="text-primary-foreground/80">
-                      Real-time tourist locations, clusters, and safety zones
+                      Real-time tourist locations, clusters
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="p-0">
+                  <CardContent className="px-4">
                     <RealTimeMap />
                   </CardContent>
                 </Card>
@@ -370,7 +360,7 @@ export default function TouristSafetyDashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-4">
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                    <div className="space-y-3 h-full overflow-y-auto">
                       {recentAlerts.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">
                           No recent alerts
@@ -418,53 +408,6 @@ export default function TouristSafetyDashboard() {
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Performance Metrics */}
-              {dashboardStats && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="hover-lift shadow-soft">
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Resolution Rate</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-green-600">
-                        {dashboardStats.resolutionRate.toFixed(1)}%
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {dashboardStats.resolvedComplaints} of {dashboardStats.totalComplaints} resolved
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="hover-lift shadow-soft">
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-blue-600">
-                        {dashboardStats.averageResponseTime.toFixed(1)} min
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Emergency response time
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="hover-lift shadow-soft">
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Active Cases</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-orange-600">
-                        {dashboardStats.activeComplaints}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Pending resolution
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
             </div>
           )}
 
@@ -481,7 +424,7 @@ export default function TouristSafetyDashboard() {
                 <div>
                   <h2 className="text-2xl font-bold text-card-foreground">Tourist Safety Map & Clusters</h2>
                   <p className="text-muted-foreground">
-                    Monitor tourist locations, safety zones, and density patterns in real-time
+                    Monitor tourist locations, and density patterns in real-time
                   </p>
                 </div>
               </div>
