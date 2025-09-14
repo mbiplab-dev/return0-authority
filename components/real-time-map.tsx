@@ -84,7 +84,6 @@ export function RealTimeMap() {
     },
   ])
 
-  // Mock safety zones
   const safetyZones: SafetyZone[] = [
     {
       id: "SZ001",
@@ -324,13 +323,6 @@ export function RealTimeMap() {
               <Label htmlFor="heatmap" className="flex items-center gap-2">
                 <Zap className="w-4 h-4" />
                 Tourist Density Heatmap
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch id="safety-zones" checked={showSafetyZones} onCheckedChange={toggleSafetyZones} />
-              <Label htmlFor="safety-zones" className="flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                Safety Zones
               </Label>
             </div>
             <div className="flex items-center space-x-2">

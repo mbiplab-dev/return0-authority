@@ -239,30 +239,6 @@ export function TouristIdManagement() {
             <p className="text-xs text-muted-foreground">Currently in country</p>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Missing Tourists</CardTitle>
-            <AlertTriangle className="w-4 h-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {stats.breakdown?.byStatus?.missing || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Require attention</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Flagged Profiles</CardTitle>
-            <Shield className="w-4 h-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.overview?.flagged || 0}</div>
-            <p className="text-xs text-muted-foreground">Under monitoring</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Search and Filters */}

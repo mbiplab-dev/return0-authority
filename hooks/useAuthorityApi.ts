@@ -1,5 +1,5 @@
 // hooks/useAuthorityApi.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 // Types
 interface Alert {

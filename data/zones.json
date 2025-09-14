@@ -126,9 +126,87 @@
       "createdAt": "2025-09-10T10:11:01.805Z",
       "createdBy": "Current Officer",
       "isActive": true
+    },
+    {
+      "id": "HRZ006",
+      "name": "dgfs",
+      "description": "gfdg",
+      "coordinates": [
+        {
+          "lat": 13.122993300579907,
+          "lng": 80.16976311035273
+        },
+        {
+          "lat": 13.086712906437896,
+          "lng": 80.18229439087025
+        },
+        {
+          "lat": 13.092732143585721,
+          "lng": 80.25336220092873
+        },
+        {
+          "lat": 13.060795068267979,
+          "lng": 80.2591986877448
+        },
+        {
+          "lat": 13.109618662521726,
+          "lng": 80.26846840210106
+        },
+        {
+          "lat": 13.121228083796268,
+          "lng": 80.25619661858985
+        }
+      ],
+      "severity": "high",
+      "createdAt": "2025-09-14T06:38:27.215Z",
+      "createdBy": "Current Officer",
+      "isActive": true
+    },
+    {
+      "id": "HRZ007",
+      "name": "dcsadas",
+      "description": "sadasd",
+      "coordinates": [
+        {
+          "lat": 13.123494835353426,
+          "lng": 80.2284713012703
+        },
+        {
+          "lat": 17.7594469641828,
+          "lng": 75.76935740341096
+        },
+        {
+          "lat": 17.68193886099982,
+          "lng": 79.0175382857368
+        },
+        {
+          "lat": 17.677479601186434,
+          "lng": 82.3061781021741
+        }
+      ],
+      "severity": "medium",
+      "createdAt": "2025-09-14T07:35:10.204Z",
+      "createdBy": "Current Officer",
+      "isActive": true
     }
   ],
   "logs": [
+    {
+      "id": "LOG007",
+      "action": "created",
+      "zoneName": "dcsadas",
+      "timestamp": "2025-09-14T07:35:10.204Z",
+      "officer": "Current Officer",
+      "details": "New medium severity zone created: sadasd"
+    },
+    {
+      "id": "LOG006",
+      "action": "created",
+      "zoneName": "dgfs",
+      "timestamp": "2025-09-14T06:38:27.215Z",
+      "officer": "Current Officer",
+      "details": "New high severity zone created: gfdg"
+    },
     {
       "id": "LOG005",
       "action": "created",
