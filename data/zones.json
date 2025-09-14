@@ -72,9 +72,79 @@
       "createdAt": "2025-09-09T12:17:22.110Z",
       "createdBy": "Current Officer",
       "isActive": true
+    },
+    {
+      "id": "HRZ004",
+      "name": "hii",
+      "description": "saa",
+      "coordinates": [
+        {
+          "lat": 13.105508155165424,
+          "lng": 80.10073572076243
+        },
+        {
+          "lat": 13.00336542304018,
+          "lng": 80.17638883906619
+        },
+        {
+          "lat": 12.960039013224787,
+          "lng": 80.08215425310988
+        },
+        {
+          "lat": 13.03763319558189,
+          "lng": 80.05760017085316
+        }
+      ],
+      "severity": "low",
+      "createdAt": "2025-09-09T23:39:58.041Z",
+      "createdBy": "Current Officer",
+      "isActive": true
+    },
+    {
+      "id": "HRZ005",
+      "name": "xone 2",
+      "description": "wfgwiugsf",
+      "coordinates": [
+        {
+          "lat": 13.111246690592182,
+          "lng": 80.18512203990525
+        },
+        {
+          "lat": 13.063399256472763,
+          "lng": 80.15923834241858
+        },
+        {
+          "lat": 13.050927579045265,
+          "lng": 80.2078050651229
+        },
+        {
+          "lat": 13.089831707043928,
+          "lng": 80.23215800630595
+        }
+      ],
+      "severity": "medium",
+      "createdAt": "2025-09-10T10:11:01.805Z",
+      "createdBy": "Current Officer",
+      "isActive": true
     }
   ],
   "logs": [
+    {
+      "id": "LOG005",
+      "action": "created",
+      "zoneName": "xone 2",
+      "timestamp": "2025-09-10T10:11:01.805Z",
+      "officer": "Current Officer",
+      "details": "New medium severity zone created: wfgwiugsf"
+    },
+    {
+      "id": "LOG004",
+      "action": "created",
+      "zoneName": "hii",
+      "timestamp": "2025-09-09T23:39:58.041Z",
+      "officer": "Current Officer",
+      "details": "New low severity zone created: saa"
+    },
     {
       "id": "LOG003",
       "action": "created",

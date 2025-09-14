@@ -17,13 +17,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "@/components/ui/use-toast"
 import {
   Search,
   User,
   MapPin,
   Phone,
   Calendar,
-  Dessert as Passport,
   CreditCard,
   Shield,
   Clock,
@@ -34,260 +34,134 @@ import {
   Plus,
   Globe,
   Users,
+  Loader2,
+  Flag,
+  RefreshCw,
 } from "lucide-react"
 
-interface TouristProfile {
-  id: string
-  personalInfo: {
-    firstName: string
-    lastName: string
-    dateOfBirth: string
-    nationality: string
-    gender: string
-    photo: string
-  }
-  documents: {
-    passportNumber: string
-    passportExpiry: string
-    visaNumber?: string
-    visaExpiry?: string
-    aadhaarNumber?: string
-    drivingLicense?: string
-  }
-  contactInfo: {
-    email: string
-    phone: string
-    emergencyContact: {
-      name: string
-      relationship: string
-      phone: string
-      email: string
-    }
-    localContact?: {
-      name: string
-      phone: string
-      address: string
-    }
-  }
-  travelInfo: {
-    arrivalDate: string
-    departureDate: string
-    purpose: string
-    accommodation: string
-    itinerary: Array<{
-      date: string
-      location: string
-      activity: string
-      status: "planned" | "completed" | "cancelled"
-    }>
-  }
-  safetyInfo: {
-    lastKnownLocation: {
-      lat: number
-      lng: number
-      address: string
-      timestamp: string
-    }
-    medicalConditions?: string
-    allergies?: string
-    medications?: string
-    insuranceProvider?: string
-    insuranceNumber?: string
-  }
-  status: "active" | "departed" | "missing" | "flagged"
-  registrationDate: string
-  lastUpdated: string
-}
+// Import the custom hook
+import { useTouristManagementApi } from "@/hooks/useTouristManagementApi"
 
 export function TouristIdManagement() {
   const [searchTerm, setSearchTerm] = useState("")
   const [searchFilter, setSearchFilter] = useState("all")
-  const [selectedTourist, setSelectedTourist] = useState<TouristProfile | null>(null)
+  const [selectedTourist, setSelectedTourist] = useState<any>(null)
   const [profileDialog, setProfileDialog] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [sortBy, setSortBy] = useState("createdAt")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
-  // Mock tourist data
-  const [tourists, setTourists] = useState<TouristProfile[]>([
-    {
-      id: "TID-2024-001",
-      personalInfo: {
-        firstName: "John",
-        lastName: "Smith",
-        dateOfBirth: "1985-03-15",
-        nationality: "United States",
-        gender: "Male",
-        photo: "/tourist-1.jpg",
-      },
-      documents: {
-        passportNumber: "US123456789",
-        passportExpiry: "2028-03-15",
-        visaNumber: "V987654321",
-        visaExpiry: "2024-12-31",
-      },
-      contactInfo: {
-        email: "john.smith@email.com",
-        phone: "+1-555-0123",
-        emergencyContact: {
-          name: "Jane Smith",
-          relationship: "Spouse",
-          phone: "+1-555-0124",
-          email: "jane.smith@email.com",
-        },
-        localContact: {
-          name: "Raj Hotel Services",
-          phone: "+91-98765-43210",
-          address: "Marina Beach Road, Chennai",
-        },
-      },
-      travelInfo: {
-        arrivalDate: "2024-01-10",
-        departureDate: "2024-01-25",
-        purpose: "Tourism",
-        accommodation: "Grand Marina Hotel, Chennai",
-        itinerary: [
-          { date: "2024-01-11", location: "Marina Beach", activity: "Beach visit", status: "completed" },
-          { date: "2024-01-12", location: "Fort St. George", activity: "Historical tour", status: "completed" },
-          { date: "2024-01-15", location: "Kapaleeshwarar Temple", activity: "Cultural visit", status: "planned" },
-          { date: "2024-01-18", location: "Mahabalipuram", activity: "Day trip", status: "planned" },
-        ],
-      },
-      safetyInfo: {
-        lastKnownLocation: {
-          lat: 13.0827,
-          lng: 80.2707,
-          address: "Marina Beach, Chennai",
-          timestamp: "2024-01-15T14:30:00Z",
-        },
-        medicalConditions: "Diabetes Type 2",
-        allergies: "Shellfish",
-        medications: "Metformin 500mg",
-        insuranceProvider: "Global Travel Insurance",
-        insuranceNumber: "GTI-789456123",
-      },
-      status: "active",
-      registrationDate: "2024-01-10T10:00:00Z",
-      lastUpdated: "2024-01-15T14:30:00Z",
-    },
-    {
-      id: "TID-2024-002",
-      personalInfo: {
-        firstName: "Sarah",
-        lastName: "Johnson",
-        dateOfBirth: "1992-07-22",
-        nationality: "Canada",
-        gender: "Female",
-        photo: "/tourist-2.jpg",
-      },
-      documents: {
-        passportNumber: "CA987654321",
-        passportExpiry: "2027-07-22",
-        visaNumber: "V123456789",
-        visaExpiry: "2024-08-31",
-      },
-      contactInfo: {
-        email: "sarah.johnson@email.com",
-        phone: "+1-416-555-0198",
-        emergencyContact: {
-          name: "Michael Johnson",
-          relationship: "Father",
-          phone: "+1-416-555-0199",
-          email: "michael.johnson@email.com",
-        },
-      },
-      travelInfo: {
-        arrivalDate: "2024-01-12",
-        departureDate: "2024-01-20",
-        purpose: "Medical Tourism",
-        accommodation: "Apollo Hospital Guest House, Chennai",
-        itinerary: [
-          { date: "2024-01-13", location: "Apollo Hospital", activity: "Medical consultation", status: "completed" },
-          { date: "2024-01-15", location: "Apollo Hospital", activity: "Treatment", status: "planned" },
-        ],
-      },
-      safetyInfo: {
-        lastKnownLocation: {
-          lat: 13.0878,
-          lng: 80.2785,
-          address: "Apollo Hospital, Chennai",
-          timestamp: "2024-01-15T09:15:00Z",
-        },
-        medicalConditions: "Hypertension",
-        insuranceProvider: "Canadian Health Plus",
-        insuranceNumber: "CHP-456789123",
-      },
-      status: "active",
-      registrationDate: "2024-01-12T08:30:00Z",
-      lastUpdated: "2024-01-15T09:15:00Z",
-    },
-    {
-      id: "TID-2024-003",
-      personalInfo: {
-        firstName: "Mike",
-        lastName: "Chen",
-        dateOfBirth: "1988-11-08",
-        nationality: "Australia",
-        gender: "Male",
-        photo: "/tourist-3.jpg",
-      },
-      documents: {
-        passportNumber: "AU456789123",
-        passportExpiry: "2026-11-08",
-        aadhaarNumber: "1234-5678-9012",
-      },
-      contactInfo: {
-        email: "mike.chen@email.com",
-        phone: "+61-2-9876-5432",
-        emergencyContact: {
-          name: "Lisa Chen",
-          relationship: "Sister",
-          phone: "+61-2-9876-5433",
-          email: "lisa.chen@email.com",
-        },
-      },
-      travelInfo: {
-        arrivalDate: "2024-01-08",
-        departureDate: "2024-02-05",
-        purpose: "Business",
-        accommodation: "ITC Grand Chola, Chennai",
-        itinerary: [
-          { date: "2024-01-09", location: "IT Park", activity: "Business meeting", status: "completed" },
-          { date: "2024-01-15", location: "Mysore Palace", activity: "Weekend trip", status: "planned" },
-        ],
-      },
-      safetyInfo: {
-        lastKnownLocation: {
-          lat: 12.3052,
-          lng: 76.6551,
-          address: "Mysore Palace, Karnataka",
-          timestamp: "2024-01-15T13:45:00Z",
-        },
-      },
-      status: "missing",
-      registrationDate: "2024-01-08T14:20:00Z",
-      lastUpdated: "2024-01-15T13:45:00Z",
-    },
-  ])
+  // Use the API hook
+  const {
+    loading,
+    error,
+    fetchTourists,
+    fetchTouristProfile,
+    updateTouristProfile,
+    flagTourist,
+    trackLocation,
+    fetchTouristStats,
+  } = useTouristManagementApi()
 
-  const [filteredTourists, setFilteredTourists] = useState<TouristProfile[]>(tourists)
+  // State for data
+  const [tourists, setTourists] = useState<any[]>([])
+  const [pagination, setPagination] = useState<any>({})
+  const [stats, setStats] = useState<any>({})
 
-  // Filter tourists based on search
+  // Load initial data
   useEffect(() => {
-    const filtered = tourists.filter((tourist) => {
-      const searchLower = searchTerm.toLowerCase()
-      const matchesSearch =
-        tourist.personalInfo.firstName.toLowerCase().includes(searchLower) ||
-        tourist.personalInfo.lastName.toLowerCase().includes(searchLower) ||
-        tourist.id.toLowerCase().includes(searchLower) ||
-        tourist.documents.passportNumber.toLowerCase().includes(searchLower) ||
-        tourist.documents.aadhaarNumber?.toLowerCase().includes(searchLower) ||
-        tourist.contactInfo.email.toLowerCase().includes(searchLower)
+    loadTourists()
+    loadStats()
+  }, [currentPage, searchFilter, sortBy, sortOrder])
 
-      const matchesFilter = searchFilter === "all" || tourist.status === searchFilter
+  // Search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm !== "") {
+        loadTourists()
+      }
+    }, 500)
 
-      return matchesSearch && matchesFilter
-    })
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
-    setFilteredTourists(filtered)
-  }, [tourists, searchTerm, searchFilter])
+  const loadTourists = async () => {
+    try {
+      const response = await fetchTourists({
+        page: currentPage,
+        limit: 20,
+        search: searchTerm,
+        status: searchFilter === "all" ? undefined : searchFilter,
+        sortBy,
+        sortOrder,
+      })
+      setTourists(response.tourists || [])
+      setPagination(response.pagination || {})
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to load tourists",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const loadStats = async () => {
+    try {
+      const response = await fetchTouristStats("30d")
+      setStats(response.statistics || {})
+    } catch (err) {
+      console.error("Failed to load stats:", err)
+    }
+  }
+
+  const handleViewProfile = async (touristId: string) => {
+    try {
+      const response = await fetchTouristProfile(touristId)
+      setSelectedTourist(response.tourist)
+      setProfileDialog(true)
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to load tourist profile",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleFlagTourist = async (touristId: string, flag: boolean, reason?: string) => {
+    try {
+      await flagTourist(touristId, flag, reason)
+      toast({
+        title: "Success",
+        description: `Tourist ${flag ? "flagged" : "unflagged"} successfully`,
+      })
+      loadTourists() // Refresh the list
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: `Failed to ${flag ? "flag" : "unflag"} tourist`,
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleTrackLocation = async (touristId: string, coordinates: { lat: number; lng: number }, address: string) => {
+    try {
+      await trackLocation(touristId, coordinates, address, "Location tracked by authority")
+      toast({
+        title: "Success",
+        description: "Location tracked successfully",
+      })
+      loadTourists() // Refresh the list
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to track location",
+        variant: "destructive",
+      })
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -312,7 +186,8 @@ export function TouristIdManagement() {
     return new Date(dateString).toLocaleString()
   }
 
-  const calculateAge = (dateOfBirth: string) => {
+  const calculateAge = (dateOfBirth?: string) => {
+    if (!dateOfBirth) return "N/A"
     const today = new Date()
     const birth = new Date(dateOfBirth)
     let age = today.getFullYear() - birth.getFullYear()
@@ -323,9 +198,21 @@ export function TouristIdManagement() {
     return age
   }
 
-  const activeCount = tourists.filter((t) => t.status === "active").length
-  const missingCount = tourists.filter((t) => t.status === "missing").length
-  const flaggedCount = tourists.filter((t) => t.status === "flagged").length
+  if (error && !tourists.length) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Error Loading Data</h3>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={loadTourists}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -337,7 +224,7 @@ export function TouristIdManagement() {
             <Users className="w-4 h-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{tourists.length}</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.overview?.total || 0}</div>
             <p className="text-xs text-muted-foreground">Registered in system</p>
           </CardContent>
         </Card>
@@ -348,7 +235,7 @@ export function TouristIdManagement() {
             <CheckCircle className="w-4 h-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeCount}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.overview?.active || 0}</div>
             <p className="text-xs text-muted-foreground">Currently in country</p>
           </CardContent>
         </Card>
@@ -359,7 +246,9 @@ export function TouristIdManagement() {
             <AlertTriangle className="w-4 h-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{missingCount}</div>
+            <div className="text-2xl font-bold text-red-600">
+              {stats.breakdown?.byStatus?.missing || 0}
+            </div>
             <p className="text-xs text-muted-foreground">Require attention</p>
           </CardContent>
         </Card>
@@ -370,7 +259,7 @@ export function TouristIdManagement() {
             <Shield className="w-4 h-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{flaggedCount}</div>
+            <div className="text-2xl font-bold text-orange-600">{stats.overview?.flagged || 0}</div>
             <p className="text-xs text-muted-foreground">Under monitoring</p>
           </CardContent>
         </Card>
@@ -414,10 +303,28 @@ export function TouristIdManagement() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label htmlFor="sort-by">Sort By</Label>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdAt">Registration Date</SelectItem>
+                  <SelectItem value="username">Name</SelectItem>
+                  <SelectItem value="profile.nationality">Nationality</SelectItem>
+                  <SelectItem value="lastLogin">Last Activity</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-end">
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Register New Tourist
+              <Button onClick={loadTourists} disabled={loading}>
+                {loading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Refresh
               </Button>
             </div>
           </div>
@@ -429,26 +336,28 @@ export function TouristIdManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
-            Tourist Records ({filteredTourists.length})
+            Tourist Records ({pagination.total || 0})
+            {loading && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredTourists.map((tourist) => (
-              <div key={tourist.id} className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+            {tourists.map((tourist) => (
+              <div key={tourist._id} className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                 <div className="flex items-start gap-4">
                   <Avatar className="w-16 h-16">
-                    <AvatarImage src={tourist.personalInfo.photo || "/placeholder.svg"} />
+                    <AvatarImage src={tourist.profile?.profilePicture || "/placeholder.svg"} />
                     <AvatarFallback>
-                      {tourist.personalInfo.firstName[0]}
-                      {tourist.personalInfo.lastName[0]}
+                      {tourist.username?.substring(0, 2)?.toUpperCase() || "TU"}
                     </AvatarFallback>
                   </Avatar>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <h4 className="font-semibold text-card-foreground">
-                        {tourist.personalInfo.firstName} {tourist.personalInfo.lastName}
+                        {tourist.profile?.firstName && tourist.profile?.lastName
+                          ? `${tourist.profile.firstName} ${tourist.profile.lastName}`
+                          : tourist.username}
                       </h4>
                       <Badge className={getStatusColor(tourist.status)}>{tourist.status.toUpperCase()}</Badge>
                       {tourist.status === "missing" && (
@@ -457,45 +366,52 @@ export function TouristIdManagement() {
                           URGENT
                         </Badge>
                       )}
+                      {tourist.status === "flagged" && tourist.profile?.flagReason && (
+                        <Badge variant="outline">
+                          <Flag className="w-3 h-3 mr-1" />
+                          {tourist.profile.flagReason}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm text-muted-foreground mb-2">
                       <div className="flex items-center gap-1">
                         <CreditCard className="w-3 h-3" />
-                        ID: {tourist.id}
+                        ID: {tourist._id.slice(-8).toUpperCase()}
                       </div>
                       <div className="flex items-center gap-1">
-                        <Passport className="w-3 h-3" />
-                        {tourist.documents.passportNumber}
+                        <User className="w-3 h-3" />
+                        {tourist.profile?.passportNumber || "No passport"}
                       </div>
                       <div className="flex items-center gap-1">
                         <Globe className="w-3 h-3" />
-                        {tourist.personalInfo.nationality}
+                        {tourist.profile?.nationality || "Unknown"}
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        Age: {calculateAge(tourist.personalInfo.dateOfBirth)}
+                        Age: {calculateAge(tourist.profile?.dateOfBirth)}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground mb-2">
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
-                        {tourist.safetyInfo.lastKnownLocation.address}
+                        {tourist.profile?.lastKnownLocation?.address || "Location unknown"}
                       </div>
                       <div className="flex items-center gap-1">
                         <Phone className="w-3 h-3" />
-                        {tourist.contactInfo.phone}
+                        {tourist.phone || "No phone"}
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        Last seen: {formatDateTime(tourist.safetyInfo.lastKnownLocation.timestamp)}
+                        Last seen: {tourist.lastLogin ? formatDateTime(tourist.lastLogin) : "Never"}
                       </div>
                     </div>
 
                     <div className="text-sm text-card-foreground">
-                      <strong>Purpose:</strong> {tourist.travelInfo.purpose} |<strong> Stay:</strong>{" "}
-                      {formatDate(tourist.travelInfo.arrivalDate)} - {formatDate(tourist.travelInfo.departureDate)}
+                      <strong>Email:</strong> {tourist.email} |
+                      <strong> Verified:</strong> {tourist.isEmailVerified ? "Yes" : "No"} |
+                      <strong> Complaints:</strong> {tourist.stats?.totalComplaints || 0}
                     </div>
                   </div>
 
@@ -503,23 +419,79 @@ export function TouristIdManagement() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        setSelectedTourist(tourist)
-                        setProfileDialog(true)
-                      }}
+                      onClick={() => handleViewProfile(tourist._id)}
+                      disabled={loading}
                     >
                       <Eye className="w-4 h-4 mr-1" />
                       View Profile
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        // For demo purposes, using current location
+                        const coords = { lat: 13.0827, lng: 80.2707 }
+                        handleTrackLocation(tourist._id, coords, "Chennai, India")
+                      }}
+                      disabled={loading}
+                    >
                       <MapPin className="w-4 h-4 mr-1" />
                       Track Location
                     </Button>
+                    {tourist.status !== "flagged" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleFlagTourist(tourist._id, true, "Manual flag by authority")}
+                        disabled={loading}
+                      >
+                        <Flag className="w-4 h-4 mr-1" />
+                        Flag Tourist
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleFlagTourist(tourist._id, false)}
+                        disabled={loading}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Remove Flag
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <div className="text-sm text-muted-foreground">
+                Showing {((pagination.page - 1) * pagination.limit) + 1} to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={!pagination.hasPrev || loading}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  disabled={!pagination.hasNext || loading}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -529,33 +501,35 @@ export function TouristIdManagement() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              Tourist Profile: {selectedTourist?.personalInfo.firstName} {selectedTourist?.personalInfo.lastName}
+              Tourist Profile: {selectedTourist?.profile?.firstName && selectedTourist?.profile?.lastName
+                ? `${selectedTourist.profile.firstName} ${selectedTourist.profile.lastName}`
+                : selectedTourist?.username}
             </DialogTitle>
             <DialogDescription>Complete tourist information and safety details</DialogDescription>
           </DialogHeader>
 
           {selectedTourist && (
             <Tabs defaultValue="personal" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="personal">Personal</TabsTrigger>
                 <TabsTrigger value="documents">Documents</TabsTrigger>
                 <TabsTrigger value="contact">Contact</TabsTrigger>
-                <TabsTrigger value="travel">Travel</TabsTrigger>
                 <TabsTrigger value="safety">Safety</TabsTrigger>
               </TabsList>
 
               <TabsContent value="personal" className="space-y-4">
                 <div className="flex items-center gap-4">
                   <Avatar className="w-24 h-24">
-                    <AvatarImage src={selectedTourist.personalInfo.photo || "/placeholder.svg"} />
+                    <AvatarImage src={selectedTourist.profile?.profilePicture || "/placeholder.svg"} />
                     <AvatarFallback className="text-lg">
-                      {selectedTourist.personalInfo.firstName[0]}
-                      {selectedTourist.personalInfo.lastName[0]}
+                      {selectedTourist.username?.substring(0, 2)?.toUpperCase() || "TU"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <h3 className="text-xl font-semibold">
-                      {selectedTourist.personalInfo.firstName} {selectedTourist.personalInfo.lastName}
+                      {selectedTourist.profile?.firstName && selectedTourist.profile?.lastName
+                        ? `${selectedTourist.profile.firstName} ${selectedTourist.profile.lastName}`
+                        : selectedTourist.username}
                     </h3>
                     <Badge className={getStatusColor(selectedTourist.status)}>
                       {selectedTourist.status.toUpperCase()}
@@ -565,24 +539,32 @@ export function TouristIdManagement() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
+                    <Label>Username</Label>
+                    <p className="text-sm text-muted-foreground">{selectedTourist.username}</p>
+                  </div>
+                  <div>
+                    <Label>Registration Date</Label>
+                    <p className="text-sm text-muted-foreground">{formatDate(selectedTourist.createdAt)}</p>
+                  </div>
+                  <div>
                     <Label>Date of Birth</Label>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(selectedTourist.personalInfo.dateOfBirth)}
+                      {selectedTourist.profile?.dateOfBirth ? formatDate(selectedTourist.profile.dateOfBirth) : "Not provided"}
                     </p>
                   </div>
                   <div>
                     <Label>Age</Label>
                     <p className="text-sm text-muted-foreground">
-                      {calculateAge(selectedTourist.personalInfo.dateOfBirth)} years
+                      {calculateAge(selectedTourist.profile?.dateOfBirth)} years
                     </p>
                   </div>
                   <div>
                     <Label>Nationality</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.personalInfo.nationality}</p>
+                    <p className="text-sm text-muted-foreground">{selectedTourist.profile?.nationality || "Not provided"}</p>
                   </div>
                   <div>
                     <Label>Gender</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.personalInfo.gender}</p>
+                    <p className="text-sm text-muted-foreground">{selectedTourist.profile?.gender || "Not provided"}</p>
                   </div>
                 </div>
               </TabsContent>
@@ -591,32 +573,38 @@ export function TouristIdManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Passport Number</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.documents.passportNumber}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedTourist.profile?.passportNumber || "Not provided"}
+                    </p>
                   </div>
                   <div>
                     <Label>Passport Expiry</Label>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(selectedTourist.documents.passportExpiry)}
+                      {selectedTourist.profile?.passportExpiry 
+                        ? formatDate(selectedTourist.profile.passportExpiry)
+                        : "Not provided"}
                     </p>
                   </div>
-                  {selectedTourist.documents.visaNumber && (
+                  {selectedTourist.profile?.visaNumber && (
                     <>
                       <div>
                         <Label>Visa Number</Label>
-                        <p className="text-sm text-muted-foreground">{selectedTourist.documents.visaNumber}</p>
+                        <p className="text-sm text-muted-foreground">{selectedTourist.profile.visaNumber}</p>
                       </div>
                       <div>
                         <Label>Visa Expiry</Label>
                         <p className="text-sm text-muted-foreground">
-                          {selectedTourist.documents.visaExpiry && formatDate(selectedTourist.documents.visaExpiry)}
+                          {selectedTourist.profile.visaExpiry 
+                            ? formatDate(selectedTourist.profile.visaExpiry)
+                            : "Not provided"}
                         </p>
                       </div>
                     </>
                   )}
-                  {selectedTourist.documents.aadhaarNumber && (
+                  {selectedTourist.profile?.aadhaarNumber && (
                     <div>
                       <Label>Aadhaar Number</Label>
-                      <p className="text-sm text-muted-foreground">{selectedTourist.documents.aadhaarNumber}</p>
+                      <p className="text-sm text-muted-foreground">{selectedTourist.profile.aadhaarNumber}</p>
                     </div>
                   )}
                 </div>
@@ -626,176 +614,151 @@ export function TouristIdManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Email</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.contactInfo.email}</p>
+                    <p className="text-sm text-muted-foreground">{selectedTourist.email}</p>
+                  </div>
+                  <div>
+                    <Label>Email Verified</Label>
+                    <Badge variant={selectedTourist.isEmailVerified ? "default" : "secondary"}>
+                      {selectedTourist.isEmailVerified ? "Verified" : "Not Verified"}
+                    </Badge>
                   </div>
                   <div>
                     <Label>Phone</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.contactInfo.phone}</p>
+                    <p className="text-sm text-muted-foreground">{selectedTourist.phone || "Not provided"}</p>
                   </div>
-                </div>
-
-                <div>
-                  <Label className="text-base font-semibold">Emergency Contact</Label>
-                  <div className="grid grid-cols-2 gap-4 mt-2">
-                    <div>
-                      <Label>Name</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedTourist.contactInfo.emergencyContact.name}
-                      </p>
-                    </div>
-                    <div>
-                      <Label>Relationship</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedTourist.contactInfo.emergencyContact.relationship}
-                      </p>
-                    </div>
-                    <div>
-                      <Label>Phone</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedTourist.contactInfo.emergencyContact.phone}
-                      </p>
-                    </div>
-                    <div>
-                      <Label>Email</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedTourist.contactInfo.emergencyContact.email}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedTourist.contactInfo.localContact && (
                   <div>
-                    <Label className="text-base font-semibold">Local Contact</Label>
+                    <Label>Phone Verified</Label>
+                    <Badge variant={selectedTourist.isPhoneVerified ? "default" : "secondary"}>
+                      {selectedTourist.isPhoneVerified ? "Verified" : "Not Verified"}
+                    </Badge>
+                  </div>
+                </div>
+
+                {selectedTourist.profile?.emergencyContact && (
+                  <div>
+                    <Label className="text-base font-semibold">Emergency Contact</Label>
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div>
                         <Label>Name</Label>
-                        <p className="text-sm text-muted-foreground">{selectedTourist.contactInfo.localContact.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedTourist.profile.emergencyContact.name}
+                        </p>
+                      </div>
+                      <div>
+                        <Label>Relationship</Label>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedTourist.profile.emergencyContact.relationship}
+                        </p>
                       </div>
                       <div>
                         <Label>Phone</Label>
                         <p className="text-sm text-muted-foreground">
-                          {selectedTourist.contactInfo.localContact.phone}
+                          {selectedTourist.profile.emergencyContact.phone}
                         </p>
                       </div>
-                      <div className="col-span-2">
-                        <Label>Address</Label>
+                      <div>
+                        <Label>Email</Label>
                         <p className="text-sm text-muted-foreground">
-                          {selectedTourist.contactInfo.localContact.address}
+                          {selectedTourist.profile.emergencyContact.email}
                         </p>
                       </div>
                     </div>
                   </div>
                 )}
-              </TabsContent>
-
-              <TabsContent value="travel" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Arrival Date</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(selectedTourist.travelInfo.arrivalDate)}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Departure Date</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(selectedTourist.travelInfo.departureDate)}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Purpose of Visit</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.travelInfo.purpose}</p>
-                  </div>
-                  <div>
-                    <Label>Accommodation</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.travelInfo.accommodation}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-base font-semibold">Itinerary</Label>
-                  <div className="space-y-2 mt-2">
-                    {selectedTourist.travelInfo.itinerary.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 border border-border rounded">
-                        <div>
-                          <p className="font-medium">{item.location}</p>
-                          <p className="text-sm text-muted-foreground">{item.activity}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
-                        </div>
-                        <Badge
-                          variant={
-                            item.status === "completed"
-                              ? "default"
-                              : item.status === "planned"
-                                ? "secondary"
-                                : "destructive"
-                          }
-                        >
-                          {item.status}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </TabsContent>
 
               <TabsContent value="safety" className="space-y-4">
+                {selectedTourist.profile?.lastKnownLocation && (
+                  <div>
+                    <Label className="text-base font-semibold">Last Known Location</Label>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <Label>Address</Label>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedTourist.profile.lastKnownLocation.address}
+                        </p>
+                      </div>
+                      <div>
+                        <Label>Timestamp</Label>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDateTime(selectedTourist.profile.lastKnownLocation.timestamp)}
+                        </p>
+                      </div>
+                      <div>
+                        <Label>Coordinates</Label>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedTourist.profile.lastKnownLocation.coordinates?.lat?.toFixed(4)},{" "}
+                          {selectedTourist.profile.lastKnownLocation.coordinates?.lng?.toFixed(4)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedTourist.profile?.medicalConditions && (
+                  <div>
+                    <Label>Medical Conditions</Label>
+                    <p className="text-sm text-muted-foreground">{selectedTourist.profile.medicalConditions}</p>
+                  </div>
+                )}
+
+                {selectedTourist.profile?.allergies && (
+                  <div>
+                    <Label>Allergies</Label>
+                    <p className="text-sm text-muted-foreground">{selectedTourist.profile.allergies}</p>
+                  </div>
+                )}
+
+                {selectedTourist.profile?.medications && (
+                  <div>
+                    <Label>Current Medications</Label>
+                    <p className="text-sm text-muted-foreground">{selectedTourist.profile.medications}</p>
+                  </div>
+                )}
+
+                {selectedTourist.profile?.insuranceProvider && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Insurance Provider</Label>
+                      <p className="text-sm text-muted-foreground">{selectedTourist.profile.insuranceProvider}</p>
+                    </div>
+                    <div>
+                      <Label>Insurance Number</Label>
+                      <p className="text-sm text-muted-foreground">{selectedTourist.profile.insuranceNumber}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <Label className="text-base font-semibold">Last Known Location</Label>
+                  <Label className="text-base font-semibold">Safety Statistics</Label>
                   <div className="grid grid-cols-2 gap-4 mt-2">
                     <div>
-                      <Label>Address</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedTourist.safetyInfo.lastKnownLocation.address}
-                      </p>
+                      <Label>Total Complaints</Label>
+                      <p className="text-sm text-muted-foreground">{selectedTourist.stats?.totalComplaints || 0}</p>
                     </div>
                     <div>
-                      <Label>Timestamp</Label>
+                      <Label>Last Activity</Label>
                       <p className="text-sm text-muted-foreground">
-                        {formatDateTime(selectedTourist.safetyInfo.lastKnownLocation.timestamp)}
-                      </p>
-                    </div>
-                    <div>
-                      <Label>Coordinates</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedTourist.safetyInfo.lastKnownLocation.lat.toFixed(4)},{" "}
-                        {selectedTourist.safetyInfo.lastKnownLocation.lng.toFixed(4)}
+                        {selectedTourist.lastLogin ? formatDateTime(selectedTourist.lastLogin) : "Never"}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {selectedTourist.safetyInfo.medicalConditions && (
+                {selectedTourist.status === "flagged" && selectedTourist.profile?.flagReason && (
                   <div>
-                    <Label>Medical Conditions</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.safetyInfo.medicalConditions}</p>
-                  </div>
-                )}
-
-                {selectedTourist.safetyInfo.allergies && (
-                  <div>
-                    <Label>Allergies</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.safetyInfo.allergies}</p>
-                  </div>
-                )}
-
-                {selectedTourist.safetyInfo.medications && (
-                  <div>
-                    <Label>Current Medications</Label>
-                    <p className="text-sm text-muted-foreground">{selectedTourist.safetyInfo.medications}</p>
-                  </div>
-                )}
-
-                {selectedTourist.safetyInfo.insuranceProvider && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Insurance Provider</Label>
-                      <p className="text-sm text-muted-foreground">{selectedTourist.safetyInfo.insuranceProvider}</p>
-                    </div>
-                    <div>
-                      <Label>Insurance Number</Label>
-                      <p className="text-sm text-muted-foreground">{selectedTourist.safetyInfo.insuranceNumber}</p>
+                    <Label className="text-base font-semibold text-red-600">Flag Information</Label>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <Label>Reason</Label>
+                        <p className="text-sm text-muted-foreground">{selectedTourist.profile.flagReason}</p>
+                      </div>
+                      <div>
+                        <Label>Flagged Date</Label>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedTourist.profile.flaggedAt ? formatDateTime(selectedTourist.profile.flaggedAt) : "Unknown"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}

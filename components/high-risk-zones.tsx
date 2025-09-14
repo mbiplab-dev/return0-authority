@@ -757,7 +757,7 @@ export function HighRiskZones() {
                     const dataUri =
                       "data:application/json;charset=utf-8," +
                       encodeURIComponent(dataStr);
-                    const exportFileDefaultName = "high-risk-zones.geojson";
+                    const exportFileDefaultName = "high-risk-zones.json";
                     const linkElement = document.createElement("a");
                     linkElement.setAttribute("href", dataUri);
                     linkElement.setAttribute("download", exportFileDefaultName);
