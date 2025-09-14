@@ -272,7 +272,7 @@ export function AlertsNotifications() {
   const handleAcknowledge = async (alertId: string) => {
     try {
       setActionLoading(true);
-      const response = await acknowledgeComplaint(alertId, "Current Officer");
+      const response = await acknowledgeComplaint(alertId, "Police Department");
       
       if (response.data) {
         toast({
@@ -301,7 +301,7 @@ export function AlertsNotifications() {
         alertId,
         "Complaint resolved by authority",
         "Issue addressed and resolved",
-        "Current Officer"
+        "Police Department"
       );
       
       if (response.data) {
@@ -332,7 +332,7 @@ export function AlertsNotifications() {
       const response = await escalateToFIR(
         selectedAlert.id,
         escalationNotes,
-        "Current Officer"
+        "Police Department"
       );
       
       if (response.data) {
@@ -366,7 +366,7 @@ export function AlertsNotifications() {
       const response = await addCommunication(
         selectedAlert.id,
         communicationMessage,
-        "Current Officer"
+        "Police Department"
       );
       
       if (response.data) {

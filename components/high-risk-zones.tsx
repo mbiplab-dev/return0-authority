@@ -24,33 +24,9 @@ import {
   Save,
   X,
 } from "lucide-react";
+import { useZones, HighRiskZone } from "@/hooks/useZones";
 
-interface HighRiskZone {
-  id: string;
-  name: string;
-  description: string;
-  coordinates: { lat: number; lng: number }[];
-  severity: "low" | "medium" | "high" | "critical";
-  createdAt: string;
-  createdBy: string;
-  isActive: boolean;
-}
-
-interface ZoneLog {
-  id: string;
-  action: "created" | "deleted" | "modified";
-  zoneName: string;
-  timestamp: string;
-  officer: string;
-  details: string;
-}
-
-interface ZonesData {
-  zones: HighRiskZone[];
-  logs: ZoneLog[];
-}
-
-type DrawingMode = "none" | "polygon" | "editing";
+type DrawingMode = "none" | "polygon";
 
 export function HighRiskZones() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -58,8 +34,23 @@ export function HighRiskZones() {
   const mapboxgl = useRef<any>(null);
   const drawingMarkers = useRef<any[]>([]);
 
+  // Use the zones hook
+  const {
+    zones,
+    logs,
+    loading,
+    error,
+    loadZones,
+    createZone,
+    deleteZone,
+    activeZones,
+    recentLogs,
+    activeZoneCount,
+    clearError
+  } = useZones();
+
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [drawingMode, setDrawingMode] = useState<DrawingMode>("none");
   const [drawingCoordinates, setDrawingCoordinates] = useState<
     { lat: number; lng: number }[]
@@ -71,84 +62,24 @@ export function HighRiskZones() {
   const [newZoneSeverity, setNewZoneSeverity] = useState<
     "low" | "medium" | "high" | "critical"
   >("medium");
-  const [highRiskZones, setHighRiskZones] = useState<HighRiskZone[]>([]);
-  const [zoneLog, setZoneLog] = useState<ZoneLog[]>([]);
 
-  // Load zones data from API
-  const loadZonesData = async () => {
-    try {
-      console.log("[v0] Loading zones data from API");
-
-      const response = await fetch("/api/zones", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        const zonesData: ZonesData = await response.json();
-        setHighRiskZones(zonesData.zones || []);
-        setZoneLog(zonesData.logs || []);
-        console.log("[v0] Loaded zones:", zonesData.zones?.length || 0);
-      } else if (response.status === 404) {
-        // File doesn't exist yet, start with empty data
-        console.log("[v0] No existing zones file found, starting fresh");
-        setHighRiskZones([]);
-        setZoneLog([]);
-      } else {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      setDataLoaded(true);
-    } catch (error) {
-      console.log("[v0] Error loading zones data:", error);
-      // Start with empty data if there's an error
-      setHighRiskZones([]);
-      setZoneLog([]);
-      setDataLoaded(true);
-    }
-  };
-
-  // Save zones data to file
-  const saveZonesData = async (zones: HighRiskZone[], logs: ZoneLog[]) => {
-    try {
-      const zonesData: ZonesData = { zones, logs };
-
-      console.log("[v0] Saving zones data:", zonesData);
-
-      const response = await fetch("/api/zones", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(zonesData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to save zones: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log("[v0] Zones data saved:", result);
-    } catch (error) {
-      console.error("[v0] Error saving zones data:", error);
-    }
-  };
-
-  // Load data on component mount
+  // Load zones on component mount
   useEffect(() => {
-    loadZonesData();
-  }, []);
+    loadZones();
+  }, [loadZones]);
+
+  // Handle API errors
+  useEffect(() => {
+    if (error) {
+      console.error("Zones API Error:", error);
+      // You could show a toast notification here
+      // toast.error(`Error: ${error}`);
+    }
+  }, [error]);
 
   const handleMapClick = useCallback(
     (e: any) => {
-      console.log("Map clicked, drawing mode:", drawingMode);
-
-      if (drawingMode !== "polygon") {
-        console.log("Not in polygon drawing mode, ignoring click");
-        return;
-      }
+      if (drawingMode !== "polygon") return;
 
       e.preventDefault();
       e.originalEvent?.stopPropagation();
@@ -156,18 +87,10 @@ export function HighRiskZones() {
       const { lng, lat } = e.lngLat;
       const newCoord = { lat, lng };
 
-      console.log("[v0] Adding drawing coordinate:", newCoord);
-
       setDrawingCoordinates((prev) => {
         const updated = [...prev, newCoord];
-        console.log("[v0] Updated drawing coordinates:", updated);
-
-        // Add visual marker
         addDrawingMarker(lng, lat, updated.length);
-
-        // Update live polygon preview
         updatePolygonPreview(updated);
-
         return updated;
       });
     },
@@ -214,12 +137,9 @@ export function HighRiskZones() {
     drawingMarkers.current.push(marker);
   };
 
-  const updatePolygonPreview = (
-    coordinates: { lat: number; lng: number }[]
-  ) => {
+  const updatePolygonPreview = (coordinates: { lat: number; lng: number }[]) => {
     if (!map.current || coordinates.length < 2) return;
 
-    // Clear existing preview layers and sources
     clearDrawingPreview();
 
     const coords = coordinates.map((coord) => [coord.lng, coord.lat]);
@@ -250,7 +170,7 @@ export function HighRiskZones() {
 
     // If we have 3+ points, show polygon preview
     if (coordinates.length >= 3) {
-      const polygonCoords = [...coords, coords[0]]; // Close the polygon
+      const polygonCoords = [...coords, coords[0]];
       const polygonSourceId = "drawing-preview-polygon";
 
       map.current.addSource(polygonSourceId, {
@@ -276,6 +196,7 @@ export function HighRiskZones() {
     }
   };
 
+  // Initialize map
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
@@ -285,8 +206,7 @@ export function HighRiskZones() {
 
         if (!document.querySelector('link[href*="mapbox-gl"]')) {
           const link = document.createElement("link");
-          link.href =
-            "https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css";
+          link.href = "https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css";
           link.rel = "stylesheet";
           document.head.appendChild(link);
         }
@@ -326,14 +246,13 @@ export function HighRiskZones() {
 
   // Add zones to map when both map and data are loaded
   useEffect(() => {
-    if (mapLoaded && dataLoaded && highRiskZones.length > 0) {
-      console.log("[v0] Adding zones to map, count:", highRiskZones.length);
+    if (mapLoaded && !loading && map.current) {
+      console.log("[v0] Adding zones to map, count:", zones.length);
       addHighRiskZones();
     }
-  }, [mapLoaded, dataLoaded, highRiskZones]);
+  }, [mapLoaded, loading, zones]);
 
   const startPolygonDrawing = () => {
-    console.log("[v0] Starting polygon drawing mode");
     setDrawingMode("polygon");
     setDrawingCoordinates([]);
     clearDrawingPreview();
@@ -350,17 +269,10 @@ export function HighRiskZones() {
       return;
     }
 
-    console.log("[v0] Finishing polygon with coordinates:", drawingCoordinates);
-    setDrawingMode("none");
     setIsDialogOpen(true);
-
-    if (map.current) {
-      map.current.getCanvas().style.cursor = "default";
-    }
   };
 
   const cancelDrawing = () => {
-    console.log("[v0] Cancelling drawing");
     setDrawingMode("none");
     setDrawingCoordinates([]);
     clearDrawingMarkers();
@@ -388,7 +300,6 @@ export function HighRiskZones() {
     const layersToRemove = ["drawing-preview-line", "drawing-preview-fill"];
     const sourcesToRemove = ["drawing-preview-line", "drawing-preview-polygon"];
 
-    // Remove layers first
     layersToRemove.forEach((layerId) => {
       try {
         if (map.current.getLayer(layerId)) {
@@ -399,7 +310,6 @@ export function HighRiskZones() {
       }
     });
 
-    // Then remove sources
     sourcesToRemove.forEach((sourceId) => {
       try {
         if (map.current.getSource(sourceId)) {
@@ -414,19 +324,26 @@ export function HighRiskZones() {
   const addHighRiskZones = () => {
     if (!map.current || !mapLoaded) return;
 
-    console.log("[v0] Adding high-risk zones to map");
-
-    highRiskZones.forEach((zone) => {
-      if (!zone.isActive) return;
-
-      if (map.current.getSource(`high-risk-zone-${zone.id}`)) {
-        return;
+    // Clear existing zones from map first
+    zones.forEach((zone) => {
+      try {
+        if (map.current.getLayer(`high-risk-zone-${zone.id}`)) {
+          map.current.removeLayer(`high-risk-zone-${zone.id}`);
+        }
+        if (map.current.getLayer(`high-risk-zone-${zone.id}-border`)) {
+          map.current.removeLayer(`high-risk-zone-${zone.id}-border`);
+        }
+        if (map.current.getSource(`high-risk-zone-${zone.id}`)) {
+          map.current.removeSource(`high-risk-zone-${zone.id}`);
+        }
+      } catch (error) {
+        // Ignore errors for non-existent layers/sources
       }
+    });
 
-      const coordinates = zone.coordinates.map((coord) => [
-        coord.lng,
-        coord.lat,
-      ]);
+    // Add active zones to map
+    activeZones.forEach((zone) => {
+      const coordinates = zone.coordinates.map((coord) => [coord.lng, coord.lat]);
       coordinates.push(coordinates[0]);
 
       map.current.addSource(`high-risk-zone-${zone.id}`, {
@@ -471,7 +388,6 @@ export function HighRiskZones() {
 
       const center = getPolygonCenter(zone.coordinates);
       const labelEl = document.createElement("div");
-      labelEl.className = "zone-label";
       labelEl.innerHTML = `
         <div style="
           background: ${borderColor};
@@ -494,154 +410,111 @@ export function HighRiskZones() {
       labelEl.addEventListener("click", () => {
         setSelectedZone(zone);
       });
-
-      map.current.on("click", `high-risk-zone-${zone.id}`, () => {
-        setSelectedZone(zone);
-      });
     });
   };
 
   const saveNewZone = async () => {
-    if (!newZoneName.trim() || drawingCoordinates.length < 3) return;
+    if (!newZoneName.trim() || drawingCoordinates.length < 3) {
+      alert("Please provide a zone name and mark at least 3 points");
+      return;
+    }
 
-    const newZone: HighRiskZone = {
-      id: `HRZ${String(highRiskZones.length + 1).padStart(3, "0")}`,
-      name: newZoneName,
-      description: newZoneDescription,
-      coordinates: drawingCoordinates,
-      severity: newZoneSeverity,
-      createdAt: new Date().toISOString(),
-      createdBy: "Current Officer",
-      isActive: true,
-    };
+    setIsSaving(true);
 
-    console.log("[v0] Saving new high-risk zone:", newZone);
+    try {
+      const success = await createZone(
+        newZoneName,
+        newZoneDescription,
+        drawingCoordinates,
+        newZoneSeverity
+      );
 
-    const updatedZones = [...highRiskZones, newZone];
-    setHighRiskZones(updatedZones);
+      if (success) {
+        console.log("[v0] Zone saved successfully");
+        resetFormAndDrawingStates();
+        
+        // Force reload zones and update map
+        await loadZones();
+        
+        // Add a small delay to ensure zones are updated, then refresh map
+        setTimeout(() => {
+          if (mapLoaded && map.current) {
+            console.log("[v0] Refreshing map with new zones");
+            addHighRiskZones();
+          }
+        }, 100);
+      } else {
+        alert("Failed to save zone. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error saving zone:", error);
+      alert("Error saving zone. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-    const logEntry: ZoneLog = {
-      id: `LOG${String(zoneLog.length + 1).padStart(3, "0")}`,
-      action: "created",
-      zoneName: newZoneName,
-      timestamp: new Date().toISOString(),
-      officer: "Current Officer",
-      details: `New ${newZoneSeverity} severity zone created: ${newZoneDescription}`,
-    };
-    const updatedLogs = [logEntry, ...zoneLog];
-    setZoneLog(updatedLogs);
-
-    // Save to file
-    await saveZonesData(updatedZones, updatedLogs);
-
-    // Reset form and drawing state
+  const resetFormAndDrawingStates = () => {
+    setIsDialogOpen(false);
     setNewZoneName("");
     setNewZoneDescription("");
     setNewZoneSeverity("medium");
     setDrawingCoordinates([]);
-    setIsDialogOpen(false);
-
-    // Clear drawing elements
+    setDrawingMode("none");
     clearDrawingMarkers();
     clearDrawingPreview();
-  };
-
-  const deleteZone = async (zoneId: string) => {
-    const zone = highRiskZones.find((z) => z.id === zoneId);
-    if (!zone) return;
-
-    console.log("[v0] Deleting high-risk zone:", zoneId);
-
-    const updatedZones = highRiskZones.map((z) =>
-      z.id === zoneId ? { ...z, isActive: false } : z
-    );
-    setHighRiskZones(updatedZones);
-
-    const logEntry: ZoneLog = {
-      id: `LOG${String(zoneLog.length + 1).padStart(3, "0")}`,
-      action: "deleted",
-      zoneName: zone.name,
-      timestamp: new Date().toISOString(),
-      officer: "Current Officer",
-      details: `High-risk zone deactivated`,
-    };
-    const updatedLogs = [logEntry, ...zoneLog];
-    setZoneLog(updatedLogs);
-
-    // Save to file
-    await saveZonesData(updatedZones, updatedLogs);
 
     if (map.current) {
-      try {
-        if (map.current.getLayer(`high-risk-zone-${zoneId}`)) {
-          map.current.removeLayer(`high-risk-zone-${zoneId}`);
-        }
-        if (map.current.getLayer(`high-risk-zone-${zoneId}-border`)) {
-          map.current.removeLayer(`high-risk-zone-${zoneId}-border`);
-        }
-        if (map.current.getSource(`high-risk-zone-${zoneId}`)) {
-          map.current.removeSource(`high-risk-zone-${zoneId}`);
-        }
-      } catch (error) {
-        console.warn("Error removing zone from map:", error);
-      }
+      map.current.getCanvas().style.cursor = "default";
     }
 
-    setSelectedZone(null);
+    console.log("[v0] All states cleaned up after zone creation");
+  };
+
+  const handleDeleteZone = async (zoneId: string) => {
+    const success = await deleteZone(zoneId);
+    if (success) {
+      setSelectedZone(null);
+      // Refresh the map after deletion
+      if (mapLoaded && map.current) {
+        addHighRiskZones();
+      }
+    }
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case "low":
-        return "#eab308";
-      case "medium":
-        return "#f97316";
-      case "high":
-        return "#ef4444";
-      case "critical":
-        return "#dc2626";
-      default:
-        return "#6b7280";
+      case "low": return "#eab308";
+      case "medium": return "#f97316";
+      case "high": return "#ef4444";
+      case "critical": return "#dc2626";
+      default: return "#6b7280";
     }
   };
 
   const getSeverityBorderColor = (severity: string) => {
     switch (severity) {
-      case "low":
-        return "#ca8a04";
-      case "medium":
-        return "#ea580c";
-      case "high":
-        return "#dc2626";
-      case "critical":
-        return "#b91c1c";
-      default:
-        return "#4b5563";
+      case "low": return "#ca8a04";
+      case "medium": return "#ea580c";
+      case "high": return "#dc2626";
+      case "critical": return "#b91c1c";
+      default: return "#4b5563";
     }
   };
 
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {
-      case "low":
-        return "secondary";
-      case "medium":
-        return "secondary";
-      case "high":
-        return "destructive";
-      case "critical":
-        return "destructive";
-      default:
-        return "outline";
+      case "low": return "secondary";
+      case "medium": return "secondary";
+      case "high": return "destructive";
+      case "critical": return "destructive";
+      default: return "outline";
     }
   };
 
   const getPolygonCenter = (coordinates: { lat: number; lng: number }[]) => {
-    const lat =
-      coordinates.reduce((sum, coord) => sum + coord.lat, 0) /
-      coordinates.length;
-    const lng =
-      coordinates.reduce((sum, coord) => sum + coord.lng, 0) /
-      coordinates.length;
+    const lat = coordinates.reduce((sum, coord) => sum + coord.lat, 0) / coordinates.length;
+    const lng = coordinates.reduce((sum, coord) => sum + coord.lng, 0) / coordinates.length;
     return { lat, lng };
   };
 
@@ -652,39 +525,47 @@ export function HighRiskZones() {
   // Generate GeoJSON data for export
   const geojsonData = {
     type: "FeatureCollection",
-    features: highRiskZones
-      .filter((zone) => zone.isActive)
-      .map((zone) => ({
-        type: "Feature",
-        properties: {
-          id: zone.id,
-          name: zone.name,
-          description: zone.description,
-          severity: zone.severity,
-          createdAt: zone.createdAt,
-          createdBy: zone.createdBy,
-        },
-        geometry: {
-          type: "Polygon",
-          coordinates: [
-            zone.coordinates.map((coord) => [coord.lng, coord.lat]),
-          ],
-        },
-      })),
+    features: activeZones.map((zone) => ({
+      type: "Feature",
+      properties: {
+        id: zone.id,
+        name: zone.name,
+        description: zone.description,
+        severity: zone.severity,
+        createdAt: zone.createdAt,
+        createdBy: zone.createdBy,
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [zone.coordinates.map((coord) => [coord.lng, coord.lat])],
+      },
+    })),
   };
 
   return (
     <div className="space-y-6">
-      {/* Geojson.io Style Toolbar */}
+      {/* Error Display */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-red-700">Error: {error}</p>
+              <Button variant="ghost" size="sm" onClick={clearError}>
+                ×
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Toolbar */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5" />
             High-Risk Zone Editor
-            {!dataLoaded && (
-              <Badge variant="secondary" className="ml-2">
-                Loading data...
-              </Badge>
+            {loading && (
+              <Badge variant="secondary" className="ml-2">Loading...</Badge>
             )}
           </CardTitle>
         </CardHeader>
@@ -704,7 +585,6 @@ export function HighRiskZones() {
                     map.current.getCanvas().style.cursor = "default";
                   }
                 }}
-                className="flex items-center gap-2"
               >
                 <MousePointer className="w-4 h-4" />
                 Select
@@ -713,7 +593,6 @@ export function HighRiskZones() {
                 size="sm"
                 variant={drawingMode === "polygon" ? "default" : "ghost"}
                 onClick={startPolygonDrawing}
-                className="flex items-center gap-2"
               >
                 <Square className="w-4 h-4" />
                 Draw Polygon
@@ -723,24 +602,16 @@ export function HighRiskZones() {
             {/* Drawing Actions */}
             {drawingMode === "polygon" && (
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  {drawingCoordinates.length} points
-                </Badge>
+                <Badge variant="secondary">{drawingCoordinates.length} points</Badge>
                 <Button
                   size="sm"
                   onClick={finishPolygon}
                   disabled={drawingCoordinates.length < 3}
-                  className="flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
                   Finish
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={cancelDrawing}
-                  className="flex items-center gap-2 bg-transparent"
-                >
+                <Button size="sm" variant="outline" onClick={cancelDrawing}>
                   <X className="w-4 h-4" />
                   Cancel
                 </Button>
@@ -752,25 +623,19 @@ export function HighRiskZones() {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  if (geojsonData) {
-                    const dataStr = JSON.stringify(geojsonData, null, 2);
-                    const dataUri =
-                      "data:application/json;charset=utf-8," +
-                      encodeURIComponent(dataStr);
-                    const exportFileDefaultName = "high-risk-zones.json";
-                    const linkElement = document.createElement("a");
-                    linkElement.setAttribute("href", dataUri);
-                    linkElement.setAttribute("download", exportFileDefaultName);
-                    linkElement.click();
-                  }
+                  const dataStr = JSON.stringify(geojsonData, null, 2);
+                  const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", dataUri);
+                  link.setAttribute("download", "high-risk-zones.json");
+                  link.click();
                 }}
-                className="flex items-center gap-2"
               >
                 Export GeoJSON
               </Button>
-              <Badge variant="secondary" className="flex items-center gap-1">
+              <Badge variant="secondary">
                 <Shield className="w-3 h-3" />
-                {highRiskZones.filter((z) => z.isActive).length} Active Zones
+                {activeZoneCount} Active Zones
               </Badge>
             </div>
           </div>
@@ -778,8 +643,7 @@ export function HighRiskZones() {
           {drawingMode === "polygon" && (
             <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Drawing Mode:</strong> Click on the map to add points to
-                your polygon. You need at least 3 points to create a zone.
+                <strong>Drawing Mode:</strong> Click on the map to add points to your polygon. You need at least 3 points to create a zone.
               </p>
             </div>
           )}
@@ -790,7 +654,7 @@ export function HighRiskZones() {
       <Card>
         <CardContent className="px-4">
           <div ref={mapContainer} className="h-[600px] w-full rounded-lg" />
-          {(!mapLoaded || !dataLoaded) && (
+          {(!mapLoaded || loading) && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-lg">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
@@ -813,11 +677,7 @@ export function HighRiskZones() {
                   <AlertTriangle className="w-5 h-5" />
                   Zone Details
                 </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedZone(null)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setSelectedZone(null)}>
                   ×
                 </Button>
               </CardTitle>
@@ -825,46 +685,36 @@ export function HighRiskZones() {
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-sm font-medium">Zone Name</Label>
-                <p className="text-sm text-muted-foreground">
-                  {selectedZone.name}
-                </p>
+                <p className="text-sm text-muted-foreground">{selectedZone.name}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Severity Level</Label>
-                <Badge
-                  variant={getSeverityBadgeVariant(selectedZone.severity)}
-                  className="mt-1"
-                >
+                <Badge variant={getSeverityBadgeVariant(selectedZone.severity)} className="mt-1">
                   {selectedZone.severity.toUpperCase()}
                 </Badge>
               </div>
               <div>
                 <Label className="text-sm font-medium">Description</Label>
-                <p className="text-sm text-muted-foreground">
-                  {selectedZone.description}
-                </p>
+                <p className="text-sm text-muted-foreground">{selectedZone.description}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Created By</Label>
-                <p className="text-sm text-muted-foreground">
-                  {selectedZone.createdBy}
-                </p>
+                <p className="text-sm text-muted-foreground">{selectedZone.createdBy}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Created At</Label>
-                <p className="text-sm text-muted-foreground">
-                  {formatTimestamp(selectedZone.createdAt)}
-                </p>
+                <p className="text-sm text-muted-foreground">{formatTimestamp(selectedZone.createdAt)}</p>
               </div>
               <div className="flex gap-2 pt-2">
                 <Button size="sm" variant="outline">
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Zone
                 </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => deleteZone(selectedZone.id)}
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  onClick={() => handleDeleteZone(selectedZone.id)}
+                  disabled={loading}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete Zone
@@ -884,55 +734,33 @@ export function HighRiskZones() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-80 overflow-y-auto">
-              {zoneLog.length === 0 ? (
+              {recentLogs.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No zone activities yet. Create your first zone to see logs
-                  here.
+                  No zone activities yet. Create your first zone to see logs here.
                 </p>
               ) : (
-                zoneLog.map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-start gap-3 p-3 rounded-lg border border-border"
-                  >
+                recentLogs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg border border-border">
                     <div
                       className={`w-2 h-2 rounded-full mt-2 ${
-                        log.action === "created"
-                          ? "bg-green-500"
-                          : log.action === "deleted"
-                          ? "bg-red-500"
-                          : "bg-blue-500"
+                        log.action === "created" ? "bg-green-500" : log.action === "deleted" ? "bg-red-500" : "bg-blue-500"
                       }`}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-card-foreground">
-                          {log.action.charAt(0).toUpperCase() +
-                            log.action.slice(1)}
-                          : {log.zoneName}
+                          {log.action.charAt(0).toUpperCase() + log.action.slice(1)}: {log.zoneName}
                         </p>
                         <Badge
-                          variant={
-                            log.action === "created"
-                              ? "default"
-                              : log.action === "deleted"
-                              ? "destructive"
-                              : "secondary"
-                          }
+                          variant={log.action === "created" ? "default" : log.action === "deleted" ? "destructive" : "secondary"}
                           className="text-xs"
                         >
                           {log.action}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {log.details}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        By: {log.officer}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatTimestamp(log.timestamp)}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{log.details}</p>
+                      <p className="text-xs text-muted-foreground">By: {log.officer}</p>
+                      <p className="text-xs text-muted-foreground">{formatTimestamp(log.timestamp)}</p>
                     </div>
                   </div>
                 ))
@@ -943,7 +771,11 @@ export function HighRiskZones() {
       </div>
 
       {/* New Zone Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        if (!open && !isSaving) {
+          resetFormAndDrawingStates();
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New High-Risk Zone</DialogTitle>
@@ -956,6 +788,7 @@ export function HighRiskZones() {
                 value={newZoneName}
                 onChange={(e) => setNewZoneName(e.target.value)}
                 placeholder="Enter zone name"
+                disabled={isSaving}
               />
             </div>
             <div>
@@ -965,6 +798,7 @@ export function HighRiskZones() {
                 value={newZoneDescription}
                 onChange={(e) => setNewZoneDescription(e.target.value)}
                 placeholder="Describe the risks and reasons for marking this area"
+                disabled={isSaving}
               />
             </div>
             <div>
@@ -974,6 +808,7 @@ export function HighRiskZones() {
                 value={newZoneSeverity}
                 onChange={(e) => setNewZoneSeverity(e.target.value as any)}
                 className="w-full p-2 border border-border rounded-md"
+                disabled={isSaving}
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -982,10 +817,26 @@ export function HighRiskZones() {
               </select>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button 
+                variant="outline" 
+                onClick={resetFormAndDrawingStates}
+                disabled={isSaving}
+              >
                 Cancel
               </Button>
-              <Button onClick={saveNewZone}>Create Zone</Button>
+              <Button 
+                onClick={saveNewZone}
+                disabled={!newZoneName.trim() || drawingCoordinates.length < 3 || isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  "Create Zone"
+                )}
+              </Button>
             </div>
           </div>
         </DialogContent>
